@@ -1,0 +1,24 @@
+export type WeightEntry = {
+  id: number;
+  weightKg: number;
+  recordedAt: string;
+};
+
+export type Goal = {
+  id: number;
+  title: string;
+  category: 'strength' | 'body' | 'consistency' | 'steps';
+  currentValue: number;
+  targetValue: number;
+  unit: string;
+  isCompleted: boolean;
+};
+
+export type Exercise = {
+  id: string;
+  name: string;
+  muscle: string;
+  equipment: string;
+  target: string;
+  previous: string[];
+};
