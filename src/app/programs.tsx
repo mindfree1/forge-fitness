@@ -1,16 +1,18 @@
 import { useCallback, useState } from 'react';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
-import { Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Card } from '@/components/Card';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { Screen } from '@/components/Screen';
 import { Body, Eyebrow, SectionTitle, Title } from '@/components/Typography';
+import { useFitness } from '@/context/FitnessProvider';
 import { createWorkoutTemplate, getActiveProgram, getWorkoutTemplates, updateProgram } from '@/lib/db';
 import { colors, radii } from '@/lib/theme';
 import type { Program, WorkoutTemplate } from '@/lib/types';
 
 export default function ProgramsScreen() {
+  const { resetTracking } = useFitness();
   const [program, setProgram] = useState<Program | null>(null);
   const [templates, setTemplates] = useState<WorkoutTemplate[]>([]);
   const [name, setName] = useState('');
@@ -18,6 +20,7 @@ export default function ProgramsScreen() {
   const [addOpen, setAddOpen] = useState(false);
   const [newWorkoutName, setNewWorkoutName] = useState('');
   const [newWorkoutSubtitle, setNewWorkoutSubtitle] = useState('');
+  const [resetting, setResetting] = useState(false);
 
   const load = useCallback(async () => {
     const active = await getActiveProgram();
@@ -56,9 +59,32 @@ export default function ProgramsScreen() {
     setAddOpen(false);
     await load();
     router.push({
-        pathname: '/workout-template/[id]',
-        params: { id: String(id) },
-    })
+      pathname: '/workout-template/[id]',
+      params: { id: String(id) },
+    });
+  };
+
+  const confirmReset = () => {
+    Alert.alert(
+      'Reset tracking data?',
+      'This clears workout history, working sets, PBs, weigh-ins and demo goal progress. Your program, workout rotation, custom exercises and technique videos stay intact.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reset',
+          style: 'destructive',
+          onPress: async () => {
+            setResetting(true);
+            try {
+              await resetTracking();
+              Alert.alert('Reset complete', 'Forge is clean and ready for your first real session.');
+            } finally {
+              setResetting(false);
+            }
+          },
+        },
+      ],
+    );
   };
 
   return (
@@ -131,6 +157,18 @@ export default function ProgramsScreen() {
         </>
       )}
 
+      <View style={styles.sectionHead}><SectionTitle>Testing & data</SectionTitle><Text style={styles.meta}>Gym ready</Text></View>
+      <Card style={styles.resetCard}>
+        <View style={styles.resetIcon}><MaterialCommunityIcons name="restart" size={22} color={colors.accent} /></View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.resetTitle}>Start with a clean slate</Text>
+          <Body>Clears test history and fake progress, but keeps your program, custom exercises and video links.</Body>
+        </View>
+        <Pressable disabled={resetting} onPress={confirmReset} style={({ pressed }) => [styles.resetButton, pressed && { opacity: 0.72 }, resetting && { opacity: 0.5 }]}>
+          <Text style={styles.resetButtonText}>{resetting ? 'Resetting…' : 'Reset data'}</Text>
+        </Pressable>
+      </Card>
+
       <Modal visible={addOpen} transparent animationType="fade" onRequestClose={() => setAddOpen(false)}>
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
@@ -184,6 +222,11 @@ const styles = StyleSheet.create({
   templateMeta: { color: colors.accent, fontSize: 9, fontWeight: '900', marginTop: 8, textTransform: 'uppercase', letterSpacing: 0.5 },
   addWorkout: { marginTop: 12, minHeight: 52, borderRadius: radii.md, borderWidth: 1, borderStyle: 'dashed', borderColor: colors.border, flexDirection: 'row', gap: 8, alignItems: 'center', justifyContent: 'center' },
   addWorkoutText: { color: colors.accent, fontSize: 13, fontWeight: '900' },
+  resetCard: { gap: 13 },
+  resetIcon: { height: 44, width: 44, borderRadius: 22, backgroundColor: colors.accentSoft, alignItems: 'center', justifyContent: 'center' },
+  resetTitle: { color: colors.text, fontSize: 15, fontWeight: '900', marginBottom: 4 },
+  resetButton: { minHeight: 48, borderRadius: radii.md, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
+  resetButtonText: { color: colors.accent, fontSize: 12, fontWeight: '900', letterSpacing: 0.3 },
   modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.76)', justifyContent: 'flex-end' },
   modalCard: { backgroundColor: colors.surface, borderTopLeftRadius: 30, borderTopRightRadius: 30, padding: 24, paddingBottom: 38, borderTopWidth: 1, borderColor: colors.border, gap: 12 },
   modalInput: { minHeight: 52, borderRadius: radii.md, backgroundColor: colors.surface3, borderWidth: 1, borderColor: colors.border, color: colors.text, paddingHorizontal: 14, fontSize: 14, fontWeight: '800' },
