@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Linking, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { Card } from '@/components/Card';
 import { Screen } from '@/components/Screen';
+import TechniqueVideo from '@/components/TechniqueVideo';
 import { Body, Eyebrow, SectionTitle, Title } from '@/components/Typography';
 import {
   getExerciseDetail,
@@ -175,17 +176,18 @@ export default function ExerciseScreen() {
         <Pressable onPress={() => router.back()} style={styles.navButton}><MaterialCommunityIcons name="arrow-left" size={22} color={colors.text} /></Pressable>
         <Text style={styles.navTitle}>Exercise</Text>
         <Pressable
-            onPress={() => {
-              if (parsedTemplateId) {
-                router.push({
-                  pathname: '/workout-template/[id]',
-                  params: { id: String(parsedTemplateId) },
-                });
-              }
-            }}
-            style={styles.navButton}
-          >
-      </Pressable>
+          onPress={() => {
+            if (parsedTemplateId) {
+              router.push({
+                pathname: '/workout-template/[id]',
+                params: { id: String(parsedTemplateId) },
+              });
+            }
+          }}
+          style={styles.navButton}
+        >
+          {parsedTemplateId ? <MaterialCommunityIcons name="playlist-edit" size={19} color={colors.muted} /> : null}
+        </Pressable>
       </View>
 
       <Eyebrow>{exercise.muscle}</Eyebrow>
@@ -264,17 +266,30 @@ export default function ExerciseScreen() {
 
       <View style={styles.sectionHead}><SectionTitle>Technique</SectionTitle><Text style={styles.rest}>{exercise.videoUrl ? 'VIDEO READY' : 'VIDEO OPTIONAL'}</Text></View>
       <Card style={styles.techniqueCard}>
-        <Pressable
-          disabled={!exercise.videoUrl}
-          onPress={() => exercise.videoUrl && Linking.openURL(exercise.videoUrl).catch(() => undefined)}
-          style={[styles.videoPlaceholder, !exercise.videoUrl && { opacity: 0.55 }]}
-        >
-          <View style={styles.play}><MaterialCommunityIcons name={exercise.videoUrl ? 'play' : 'video-off-outline'} size={24} color={colors.bg} /></View>
-        </Pressable>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.techniqueTitle}>Keep the rep clean</Text>
-          <Body>{exercise.techniqueNotes ?? 'Use a controlled range of motion and stop the set when technique starts to break down.'}</Body>
-        </View>
+        {exercise.videoUrl ? (
+          <>
+            <View style={styles.videoFrame}>
+              <TechniqueVideo
+                url={exercise.videoUrl}
+                dom={{ style: { height: 210, width: '100%' }, scrollEnabled: false }}
+              />
+            </View>
+            <View>
+              <Text style={styles.techniqueTitle}>Watch technique video</Text>
+              <Body>{exercise.techniqueNotes ?? 'Use the video as a quick form check, then keep your reps controlled and consistent.'}</Body>
+            </View>
+          </>
+        ) : (
+          <View style={styles.techniqueRow}>
+            <View style={styles.videoPlaceholder}>
+              <View style={styles.playMuted}><MaterialCommunityIcons name="video-off-outline" size={24} color={colors.bg} /></View>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.techniqueTitle}>Keep the rep clean</Text>
+              <Body>{exercise.techniqueNotes ?? 'Use a controlled range of motion and stop the set when technique starts to break down.'}</Body>
+            </View>
+          </View>
+        )}
       </Card>
     </Screen>
   );
@@ -310,8 +325,10 @@ const styles = StyleSheet.create({
   checkDone: { backgroundColor: colors.accent, borderColor: colors.accent },
   addSet: { marginTop: 10, height: 48, borderRadius: radii.md, borderWidth: 1, borderStyle: 'dashed', borderColor: colors.border, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 7 },
   addSetText: { color: colors.accent, fontSize: 12, fontWeight: '900' },
-  techniqueCard: { flexDirection: 'row', gap: 14, alignItems: 'center' },
+  techniqueCard: { gap: 14 },
+  techniqueRow: { flexDirection: 'row', gap: 14, alignItems: 'center' },
+  videoFrame: { height: 210, width: '100%', borderRadius: radii.md, overflow: 'hidden', backgroundColor: colors.surface3 },
   videoPlaceholder: { width: 90, height: 78, borderRadius: radii.md, backgroundColor: colors.surface3, alignItems: 'center', justifyContent: 'center' },
-  play: { height: 38, width: 38, borderRadius: 19, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center' },
+  playMuted: { height: 38, width: 38, borderRadius: 19, backgroundColor: colors.faint, alignItems: 'center', justifyContent: 'center' },
   techniqueTitle: { color: colors.text, fontSize: 14, fontWeight: '900', marginBottom: 5 },
 });
