@@ -27,8 +27,9 @@ export default function ProgressScreen() {
   const [pbs, setPbs] = useState<PersonalBestHistoryItem[]>([]);
   const [sessions, setSessions] = useState(0);
   const values = weights.map((entry) => entry.weightKg);
-  const current = latestWeight?.weightKg ?? 72.8;
-  const start = weights[0]?.weightKg ?? current;
+  const current = latestWeight?.weightKg ?? null;
+  const start = weights[0]?.weightKg ?? null;
+  const delta = current != null && start != null ? current - start : null;
 
   useFocusEffect(useCallback(() => {
     const thirtyDaysAgo = new Date();
@@ -62,18 +63,27 @@ export default function ProgressScreen() {
       </View>
 
       <View style={styles.metricRow}>
-        <MetricTile label="Current" value={current.toFixed(1)} suffix="kg" detail={`${(current - start).toFixed(1)} kg from start`} />
+        <MetricTile label="Current" value={current == null ? '—' : current.toFixed(1)} suffix={current == null ? undefined : 'kg'} detail={delta == null ? 'No weigh-ins yet' : `${delta.toFixed(1)} kg from start`} />
         <MetricTile label="Sessions" value={String(sessions)} detail="Last 30 days" accent />
       </View>
 
       <View style={styles.sectionHead}><SectionTitle>Body weight</SectionTitle><Text style={styles.meta}>{weights.length} entries</Text></View>
       <Card>
-        <View style={styles.chartHead}>
-          <View><Text style={styles.chartValue}>{current.toFixed(1)} kg</Text><Text style={styles.chartLabel}>LATEST WEIGH-IN</Text></View>
-          <View style={styles.deltaPill}><MaterialCommunityIcons name={(current - start) <= 0 ? 'trending-down' : 'trending-up'} size={15} color={colors.accent} /><Text style={styles.deltaText}>{(current - start).toFixed(1)} kg</Text></View>
-        </View>
-        <ProgressSparkline values={values.length > 1 ? values : [current]} />
-        <View style={styles.axis}><Text style={styles.axisText}>{formatShortDate(weights[0]?.recordedAt)}</Text><Text style={styles.axisText}>{formatShortDate(latestWeight?.recordedAt)}</Text></View>
+        {current == null ? (
+          <View>
+            <Text style={styles.emptyTitle}>No weigh-ins yet</Text>
+            <Body style={{ marginTop: 5 }}>Log your first weight from Today and Forge will build the trend from there.</Body>
+          </View>
+        ) : (
+          <>
+            <View style={styles.chartHead}>
+              <View><Text style={styles.chartValue}>{current.toFixed(1)} kg</Text><Text style={styles.chartLabel}>LATEST WEIGH-IN</Text></View>
+              <View style={styles.deltaPill}><MaterialCommunityIcons name={(delta ?? 0) <= 0 ? 'trending-down' : 'trending-up'} size={15} color={colors.accent} /><Text style={styles.deltaText}>{(delta ?? 0).toFixed(1)} kg</Text></View>
+            </View>
+            <ProgressSparkline values={values.length > 1 ? values : [current]} />
+            <View style={styles.axis}><Text style={styles.axisText}>{formatShortDate(weights[0]?.recordedAt)}</Text><Text style={styles.axisText}>{formatShortDate(latestWeight?.recordedAt)}</Text></View>
+          </>
+        )}
       </Card>
 
       <View style={styles.sectionHead}><SectionTitle>Strength trend</SectionTitle><Text style={styles.meta}>From your sets</Text></View>
