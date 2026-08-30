@@ -1,5 +1,6 @@
 import * as SQLite from 'expo-sqlite';
-import type { Goal, WeightEntry } from './types';
+import { todayWorkout } from './seed';
+import type { Goal, PersonalBest, WeightEntry, WorkoutSession, WorkoutSet } from './types';
 
 let databasePromise: Promise<SQLite.SQLiteDatabase> | null = null;
 
@@ -56,6 +57,9 @@ export async function initialiseDatabase() {
       completed INTEGER NOT NULL DEFAULT 0
     );
 
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_workout_set_unique
+      ON workout_sets(workout_id, exercise_id, set_number);
+
     CREATE TABLE IF NOT EXISTS personal_bests (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       exercise_id INTEGER NOT NULL REFERENCES exercises(id) ON DELETE CASCADE,
@@ -64,6 +68,17 @@ export async function initialiseDatabase() {
       achieved_at TEXT NOT NULL
     );
   `);
+
+  for (const exercise of todayWorkout.exercises) {
+    await db.runAsync(
+      `INSERT OR IGNORE INTO exercises (slug, name, muscle_group, equipment)
+       VALUES (?, ?, ?, ?)`,
+      exercise.id,
+      exercise.name,
+      exercise.muscle,
+      exercise.equipment,
+    );
+  }
 
   const weightCount = await db.getFirstAsync<{ count: number }>('SELECT COUNT(*) AS count FROM weight_entries');
   if (!weightCount?.count) {
@@ -134,4 +149,171 @@ export async function getGoals(): Promise<Goal[]> {
 export async function toggleGoal(id: number, completed: boolean) {
   const db = await database();
   await db.runAsync('UPDATE goals SET is_completed = ? WHERE id = ?', completed ? 1 : 0, id);
+}
+
+export async function getActiveWorkout(): Promise<WorkoutSession | null> {
+  const db = await database();
+  const row = await db.getFirstAsync<{
+    id: number;
+    name: string;
+    started_at: string;
+    completed_at: string | null;
+  }>(`SELECT id, name, started_at, completed_at
+      FROM workouts
+      WHERE completed_at IS NULL AND started_at IS NOT NULL
+      ORDER BY started_at DESC
+      LIMIT 1`);
+  if (!row) return null;
+  return { id: row.id, name: row.name, startedAt: row.started_at, completedAt: row.completed_at };
+}
+
+export async function startWorkout(name: string): Promise<WorkoutSession> {
+  const existing = await getActiveWorkout();
+  if (existing) return existing;
+
+  const db = await database();
+  const startedAt = new Date().toISOString();
+  const result = await db.runAsync(
+    'INSERT INTO workouts (name, started_at) VALUES (?, ?)',
+    name,
+    startedAt,
+  );
+  return { id: Number(result.lastInsertRowId), name, startedAt, completedAt: null };
+}
+
+export async function finishWorkout(workoutId: number) {
+  const db = await database();
+  await db.runAsync(
+    'UPDATE workouts SET completed_at = ? WHERE id = ?',
+    new Date().toISOString(),
+    workoutId,
+  );
+}
+
+async function exerciseIdForSlug(slug: string) {
+  const db = await database();
+  const row = await db.getFirstAsync<{ id: number }>('SELECT id FROM exercises WHERE slug = ?', slug);
+  if (!row) throw new Error(`Unknown exercise: ${slug}`);
+  return row.id;
+}
+
+export async function getWorkoutSets(workoutId: number, exerciseSlug: string): Promise<WorkoutSet[]> {
+  const db = await database();
+  const exerciseId = await exerciseIdForSlug(exerciseSlug);
+  const rows = await db.getAllAsync<{
+    id: number;
+    set_number: number;
+    weight_kg: number | null;
+    reps: number | null;
+    completed: number;
+  }>(
+    `SELECT id, set_number, weight_kg, reps, completed
+     FROM workout_sets
+     WHERE workout_id = ? AND exercise_id = ?
+     ORDER BY set_number ASC`,
+    workoutId,
+    exerciseId,
+  );
+  return rows.map((row) => ({
+    id: row.id,
+    workoutId,
+    exerciseSlug,
+    setNumber: row.set_number,
+    weightKg: row.weight_kg,
+    reps: row.reps,
+    completed: Boolean(row.completed),
+  }));
+}
+
+export async function saveWorkoutSet(set: WorkoutSet): Promise<PersonalBest['metric'][]> {
+  const db = await database();
+  const exerciseId = await exerciseIdForSlug(set.exerciseSlug);
+  await db.runAsync(
+    `INSERT INTO workout_sets (workout_id, exercise_id, set_number, weight_kg, reps, completed)
+     VALUES (?, ?, ?, ?, ?, ?)
+     ON CONFLICT(workout_id, exercise_id, set_number)
+     DO UPDATE SET weight_kg = excluded.weight_kg, reps = excluded.reps, completed = excluded.completed`,
+    set.workoutId,
+    exerciseId,
+    set.setNumber,
+    set.weightKg,
+    set.reps,
+    set.completed ? 1 : 0,
+  );
+
+  if (!set.completed || !set.weightKg || !set.reps) return [];
+
+  const metrics: Array<[PersonalBest['metric'], number]> = [
+    ['weight', set.weightKg],
+    ['reps', set.reps],
+    ['e1rm', set.weightKg * (1 + set.reps / 30)],
+    ['volume', set.weightKg * set.reps],
+  ];
+  const achieved: PersonalBest['metric'][] = [];
+  const achievedAt = new Date().toISOString();
+
+  for (const [metric, value] of metrics) {
+    const current = await db.getFirstAsync<{ value: number }>(
+      `SELECT value FROM personal_bests
+       WHERE exercise_id = ? AND metric = ?
+       ORDER BY value DESC
+       LIMIT 1`,
+      exerciseId,
+      metric,
+    );
+    if (!current || value > current.value) {
+      await db.runAsync(
+        'INSERT INTO personal_bests (exercise_id, metric, value, achieved_at) VALUES (?, ?, ?, ?)',
+        exerciseId,
+        metric,
+        value,
+        achievedAt,
+      );
+      achieved.push(metric);
+    }
+  }
+  return achieved;
+}
+
+export async function getPersonalBests(exerciseSlug: string): Promise<PersonalBest[]> {
+  const db = await database();
+  const exerciseId = await exerciseIdForSlug(exerciseSlug);
+  const rows = await db.getAllAsync<{
+    metric: PersonalBest['metric'];
+    value: number;
+    achieved_at: string;
+  }>(
+    `SELECT pb.metric, pb.value, pb.achieved_at
+     FROM personal_bests pb
+     INNER JOIN (
+       SELECT metric, MAX(value) AS max_value
+       FROM personal_bests
+       WHERE exercise_id = ?
+       GROUP BY metric
+     ) best ON best.metric = pb.metric AND best.max_value = pb.value
+     WHERE pb.exercise_id = ?
+     GROUP BY pb.metric
+     ORDER BY pb.metric ASC`,
+    exerciseId,
+    exerciseId,
+  );
+  return rows.map((row) => ({ metric: row.metric, value: row.value, achievedAt: row.achieved_at }));
+}
+
+export async function getWorkoutHistory(limit = 10): Promise<WorkoutSession[]> {
+  const db = await database();
+  const rows = await db.getAllAsync<{
+    id: number;
+    name: string;
+    started_at: string;
+    completed_at: string | null;
+  }>(
+    `SELECT id, name, started_at, completed_at
+     FROM workouts
+     WHERE started_at IS NOT NULL
+     ORDER BY started_at DESC
+     LIMIT ?`,
+    limit,
+  );
+  return rows.map((row) => ({ id: row.id, name: row.name, startedAt: row.started_at, completedAt: row.completed_at }));
 }

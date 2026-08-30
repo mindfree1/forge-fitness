@@ -1,14 +1,60 @@
+import { useCallback, useEffect, useState } from 'react';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { router } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { router, useFocusEffect } from 'expo-router';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Card } from '@/components/Card';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { Screen } from '@/components/Screen';
 import { Body, Eyebrow, SectionTitle, Title } from '@/components/Typography';
+import { finishWorkout, getActiveWorkout, startWorkout } from '@/lib/db';
 import { todayWorkout } from '@/lib/seed';
 import { colors, radii } from '@/lib/theme';
+import type { WorkoutSession } from '@/lib/types';
 
 export default function TrainScreen() {
+  const [activeWorkout, setActiveWorkout] = useState<WorkoutSession | null>(null);
+  const [starting, setStarting] = useState(false);
+
+  const refreshActiveWorkout = useCallback(() => {
+    getActiveWorkout().then(setActiveWorkout).catch(() => setActiveWorkout(null));
+  }, []);
+
+  useEffect(refreshActiveWorkout, [refreshActiveWorkout]);
+  useFocusEffect(useCallback(() => {
+    refreshActiveWorkout();
+  }, [refreshActiveWorkout]));
+
+  const beginOrResume = async () => {
+    if (starting) return;
+    setStarting(true);
+    try {
+      const workout = activeWorkout ?? await startWorkout(todayWorkout.title);
+      setActiveWorkout(workout);
+      router.push(`/exercise/${todayWorkout.exercises[0].id}`);
+    } finally {
+      setStarting(false);
+    }
+  };
+
+  const confirmFinish = () => {
+    if (!activeWorkout) return;
+    Alert.alert(
+      'Finish workout?',
+      'Your completed sets and PBs will stay saved in Forge.',
+      [
+        { text: 'Keep training', style: 'cancel' },
+        {
+          text: 'Finish',
+          style: 'destructive',
+          onPress: async () => {
+            await finishWorkout(activeWorkout.id);
+            setActiveWorkout(null);
+          },
+        },
+      ],
+    );
+  };
+
   return (
     <Screen>
       <View style={styles.header}>
@@ -20,13 +66,23 @@ export default function TrainScreen() {
       <Card style={styles.hero}>
         <View style={styles.heroTop}>
           <View>
-            <Text style={styles.heroLabel}>Today's target</Text>
-            <Text style={styles.heroValue}>18 working sets</Text>
+            <Text style={styles.heroLabel}>{activeWorkout ? 'Session in progress' : "Today's target"}</Text>
+            <Text style={styles.heroValue}>{activeWorkout ? 'Push Strength · Active' : '18 working sets'}</Text>
           </View>
-          <View style={styles.roundIcon}><MaterialCommunityIcons name="dumbbell" size={24} color={colors.accent} /></View>
+          <View style={styles.roundIcon}><MaterialCommunityIcons name={activeWorkout ? 'progress-clock' : 'dumbbell'} size={24} color={colors.accent} /></View>
         </View>
-        <Text style={styles.heroCopy}>Beat last session by one rep or a small weight increase. Clean form wins.</Text>
-        <PrimaryButton label="Begin session" icon="play" />
+        <Text style={styles.heroCopy}>
+          {activeWorkout
+            ? 'Your set entries are being saved locally. Pick up exactly where you left off.'
+            : 'Beat last session by one rep or a small weight increase. Clean form wins.'}
+        </Text>
+        <PrimaryButton label={activeWorkout ? 'Resume session' : 'Begin session'} icon={activeWorkout ? 'play' : 'play'} onPress={beginOrResume} />
+        {activeWorkout && (
+          <Pressable onPress={confirmFinish} style={styles.finishButton}>
+            <MaterialCommunityIcons name="flag-checkered" size={17} color={colors.muted} />
+            <Text style={styles.finishText}>Finish session</Text>
+          </Pressable>
+        )}
       </Card>
 
       <View style={styles.sectionHead}>
@@ -71,6 +127,8 @@ const styles = StyleSheet.create({
   heroValue: { color: colors.text, fontSize: 22, fontWeight: '900', marginTop: 5 },
   roundIcon: { height: 50, width: 50, borderRadius: 25, backgroundColor: colors.accentSoft, alignItems: 'center', justifyContent: 'center' },
   heroCopy: { color: colors.muted, fontSize: 13, lineHeight: 19, fontWeight: '600' },
+  finishButton: { minHeight: 44, borderRadius: radii.pill, borderWidth: 1, borderColor: colors.border, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7 },
+  finishText: { color: colors.muted, fontSize: 11, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.6 },
   sectionHead: { marginTop: 30, marginBottom: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   meta: { color: colors.faint, fontSize: 10, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.8 },
   list: { borderRadius: radii.lg, overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border },
