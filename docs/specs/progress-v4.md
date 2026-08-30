@@ -1,7 +1,7 @@
 # Forge Progress v4 — visual analytics dashboard
 
 ## Status
-Draft implementation specification. This branch must remain unmerged until physical-device visual QA is complete.
+Implementation in progress on draft PR #3. The first real-data dashboard tranche is now built and automated static Android QA is green. This branch must remain unmerged until physical-device visual and gym QA are complete.
 
 ## Branch / PR contract
 - Head: `feature/progress-v4`
@@ -13,6 +13,26 @@ Draft implementation specification. This branch must remain unmerged until physi
 Turn the existing Progress tab into a premium, information-dense analytics dashboard that feels like a real training product rather than a collection of summary tiles.
 
 The approved visual direction is the supplied Forge mockup: black background, stacked dark analytics cards, compact chart density, restrained blue/lime accents, rounded controls, strong numerical hierarchy, and a persistent bottom navigation. The mockup is the visual source of truth for hierarchy and density; this spec translates it into implementation rules for the current Forge Android codebase.
+
+## First implementation checkpoint
+Completed on `feature/progress-v4`:
+- range-aware analytics layer in `src/lib/analytics.ts`
+- `7D / 30D / 12W / 1Y` screen-level filtering
+- completed-workout consistency aggregation
+- strength exercise discovery from real completed weighted sets
+- per-session `e1RM`, `Max Weight`, and `Volume` series
+- range-filtered bodyweight series with latest-known fallback
+- PB history with calculated prior-record deltas and same-exercise/day deduplication
+- normalized muscle-group weighted volume
+- reusable Progress analytics cards, selectors, line/bar charts, PB strip, muscle bars and state components
+- V4 Progress screen wired to SQLite only
+- loading, empty, partial-error, retry and stale-async protections
+- removal of fresh-install synthetic weight history
+- reset flow leaves tracking analytics genuinely empty instead of inserting a zero-weight sentinel
+- GitHub Actions QA for TypeScript, Expo Doctor and Android export
+- real gym QA checklist in `docs/qa/progress-v4-gym.md`
+
+Current automated checkpoint: TypeScript, Expo Doctor and Android export all pass on the V4 branch. Physical-device visual QA is still required before merge.
 
 ## Current repo baseline
 `feature/training-programs-v3` already provides the required data foundation:
@@ -37,10 +57,10 @@ The current Progress UI is intentionally simpler than the target. V4 replaces th
 7. **No merge before visual QA.** Draft PR only.
 
 ## Important data-cleanliness requirement
-`initialiseDatabase()` currently seeds synthetic weight entries for a fresh install. Progress v4 must not rely on or introduce seeded analytics data.
+`initialiseDatabase()` previously seeded synthetic weight entries for a fresh install. Progress v4 no longer inserts those rows and must not rely on or introduce seeded analytics data.
 
 Implementation requirement:
-- stop inserting demo `weight_entries` for new installs;
+- do not insert demo `weight_entries` for new installs;
 - do not create synthetic workouts, sets, PBs, streaks or chart points;
 - do **not** automatically delete historical weight rows from existing installs because the current schema cannot safely distinguish seeded rows from legitimate user-entered rows;
 - for QA devices that contain old seed data, use the existing reset/dev workflow to start from a known clean state rather than performing an ambiguous production deletion.
@@ -138,7 +158,7 @@ Bodyweight/null-weight sets do not contribute to weighted volume in V4. Do not i
 
 #### Chart treatment
 - line chart with visible data-point markers
-- subtle area fill beneath the line for the lime strength series
+- subtle area fill beneath the line is a visual-polish target if it can be implemented without making the chart fragile
 - horizontal guide lines
 - minimal axis labels
 - lime accent for strength
@@ -207,7 +227,7 @@ Only produce the sentence when enough data exists to make it useful.
 ## Reusable component plan
 Create a small analytics component layer rather than expanding one huge screen file.
 
-Suggested components:
+Implemented analytics components:
 - `ProgressRangeSelector`
 - `AnalyticsCard`
 - `AnalyticsCardHeader`
@@ -220,16 +240,12 @@ Suggested components:
 - `AnalyticsEmptyState`
 - `AnalyticsErrorState`
 - `AnalyticsSkeleton`
+- `OptionPickerModal`
 
-The existing `Card` can remain the base surface if it can achieve the target density without compromising other screens. Prefer additive analytics-specific wrappers over globally changing `Card` styles.
+The existing `Card` remains the base surface. Analytics-specific wrappers adjust density without globally changing other Forge screens.
 
 ### Chart rendering
-The current `ProgressSparkline` only renders points and cannot reproduce the approved connected-line/area treatment.
-
-Preferred approach:
-- add `react-native-svg` as the only low-level chart rendering dependency if necessary;
-- build Forge-owned lightweight line/bar chart primitives on top of it;
-- avoid a large opinionated charting library unless a concrete blocker is found.
+The current V4 implementation uses Forge-owned lightweight React Native chart primitives rather than adding a large charting package. This keeps the first Android QA surface small and avoids dependency churn before physical-device testing.
 
 Charts must handle:
 - one point
@@ -241,28 +257,27 @@ Charts must handle:
 - different device widths
 
 ## Data/API layer
-Add range-aware analytics helpers in `src/lib/db.ts` or a dedicated `src/lib/analytics.ts` if `db.ts` becomes too large.
+Range-aware analytics live in `src/lib/analytics.ts`, keeping `db.ts` focused on persistence and training operations.
 
-Suggested models:
+Implemented models include:
 - `ProgressRange`
 - `ConsistencyBucket`
 - `StrengthMetric = 'e1rm' | 'maxWeight' | 'volume'`
 - `StrengthSeriesPoint`
-- `BodyweightSeriesPoint`
+- `BodyweightSeries`
 - `RecentAchievement`
 - `MuscleVolumeRow`
-- `ProgressDashboardData`
 
-Suggested query/helper surface:
+Implemented query/helper surface:
+- `getTrainingSpanSummary()`
 - `getTrainingConsistency(range)`
 - `getStrengthExerciseOptions()`
 - `getStrengthSeries(exerciseSlug, metric, range)`
 - `getBodyweightSeries(range)`
-- `getRecentAchievements(limit)`
+- `getRecentAchievements(range, limit)`
 - `getMuscleGroupVolume(range)`
-- `getLongestWorkoutStreak()`
 
-Queries should aggregate in SQLite where practical, then perform light shaping/formatting in TypeScript.
+Queries aggregate in SQLite where practical, then perform light shaping/normalisation in TypeScript.
 
 ## State model
 `progress.tsx` owns:
@@ -270,7 +285,7 @@ Queries should aggregate in SQLite where practical, then perform light shaping/f
 - selected strength exercise
 - selected strength metric
 - loading state
-- error state
+- partial error state
 - loaded dashboard data
 
 Reload when:
@@ -279,16 +294,16 @@ Reload when:
 - selected strength exercise changes;
 - selected strength metric changes.
 
-Protect against stale async updates when a user changes controls quickly.
+The implementation uses a request id guard so older async responses cannot overwrite newer selector results.
 
 ## Loading, empty and error states
-Every analytics section needs an intentional state.
+Every analytics section has an intentional state.
 
 ### Loading
-Use card-shaped skeletons/placeholders with stable height so the screen does not jump dramatically after queries resolve.
+Card-shaped stable-height loading placeholders are used so the screen does not collapse while queries resolve.
 
 ### Empty
-Keep the visual hierarchy intact and explain the action that creates the missing data:
+The hierarchy remains intact and explains the action that creates missing data:
 - consistency → complete a workout
 - strength → log completed sets with weight and reps
 - bodyweight → add a weigh-in
@@ -296,9 +311,9 @@ Keep the visual hierarchy intact and explain the action that creates the missing
 - muscle balance → complete weighted working sets
 
 ### Error
-Do not silently swallow query errors. The current Progress screen catches and ignores load failures; V4 should surface a compact retry state and log enough context for development diagnosis.
+Query failures are logged with Progress-specific context and the affected cards expose retry rather than silently swallowing failures.
 
-A partial query failure should not necessarily blank the entire screen if other cards loaded successfully.
+A partial query failure does not blank the whole dashboard if other cards loaded successfully.
 
 ## Visual rules from approved mockup
 - true black / Forge background behind cards
@@ -340,19 +355,19 @@ Requirements:
 - avoid rerendering every card for unrelated selector changes when practical.
 
 ## Implementation order
-1. analytics types and range/date primitives
-2. stop fresh-install synthetic weight seeding
-3. reusable analytics card/chart primitives
-4. global range selector
-5. training consistency query + bar chart
-6. bodyweight query + blue trend chart
-7. strength exercise/metric selectors + strength series/e1RM
-8. recent PB/achievement strip
-9. muscle-group volume query + balance bars
-10. loading / empty / partial-error / retry states
-11. polish spacing, typography, axis labels and chart density against the approved mockup
-12. typecheck + Expo Doctor + Android export
-13. fresh preview APK and physical-device visual QA
+1. ✅ analytics types and range/date primitives
+2. ✅ stop fresh-install synthetic weight seeding
+3. ✅ reusable analytics card/chart primitives
+4. ✅ global range selector
+5. ✅ training consistency query + bar chart
+6. ✅ bodyweight query + blue trend chart
+7. ✅ strength exercise/metric selectors + strength series/e1RM
+8. ✅ recent PB/achievement strip using real PB history
+9. ✅ muscle-group volume query + balance bars
+10. ✅ loading / empty / partial-error / retry states
+11. **Next:** physical-device visual polish against mockup
+12. ✅ automated typecheck + Expo Doctor + Android export
+13. **Next:** fresh preview APK and physical-device/gym QA
 
 ## Acceptance criteria
 - Progress screen visually follows the approved mockup hierarchy and density.
