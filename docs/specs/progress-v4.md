@@ -1,7 +1,7 @@
 # Forge Progress v4 — visual analytics dashboard
 
 ## Status
-Implementation in progress on draft PR #3. The first real-data dashboard tranche is now built and automated static Android QA is green. This branch must remain unmerged until physical-device visual and gym QA are complete.
+Implementation in progress on draft PR #3. The first real-data dashboard tranche is built and automated static Android QA is passing. This branch must remain unmerged until physical-device visual and gym QA are complete.
 
 ## Branch / PR contract
 - Head: `feature/progress-v4`
@@ -32,7 +32,7 @@ Completed on `feature/progress-v4`:
 - GitHub Actions QA for TypeScript, Expo Doctor and Android export
 - real gym QA checklist in `docs/qa/progress-v4-gym.md`
 
-Current automated checkpoint: TypeScript, Expo Doctor and Android export all pass on the V4 branch. Physical-device visual QA is still required before merge.
+Automated checkpoints pass for the implemented V4 code. Physical-device visual QA is still required before merge and remains the source of truth for visual polish.
 
 ## Current repo baseline
 `feature/training-programs-v3` already provides the required data foundation:
@@ -45,7 +45,7 @@ Current automated checkpoint: TypeScript, Expo Doctor and Android export all pas
 - current `getStrengthTrends()` and `getCompletedWorkoutCountSince()` analytics helpers
 - current `ProgressSparkline`, `Card`, theme tokens and persistent tab navigation
 
-The current Progress UI is intentionally simpler than the target. V4 replaces that presentation and adds range-aware analytics queries.
+The V4 implementation replaces the simpler Progress presentation with range-aware analytics while preserving the underlying V3 training data model.
 
 ## Non-negotiables
 1. **Real SQLite data only.** No hard-coded chart series, fake PBs, fabricated percentages or mock analytics values.
@@ -75,7 +75,7 @@ Target hierarchy:
 
 Do not keep the current `Progress / Proof of work.` hierarchy in V4.
 
-The subtitle should be derived from real data where possible. If no completed sessions exist, use a neutral empty-state subtitle such as `Start training to build your trends`.
+The subtitle is derived from real data where possible. If no completed sessions exist, use a neutral empty-state subtitle such as `Start training to build your trends`.
 
 ### 2. Global range selector
 Segmented pill control directly below the header:
@@ -212,7 +212,7 @@ Aggregate completed weighted training volume by `exercises.muscle_group`:
 
 Display the leading muscle groups as horizontal bars sorted descending.
 
-Canonical group normalization should happen before rendering so semantically equivalent labels do not split into separate rows. Initial display order is data-driven, not hard-coded.
+Canonical group normalization happens before rendering so semantically equivalent labels do not split into separate rows. Initial display order is data-driven, not hard-coded.
 
 Each row:
 - muscle label
@@ -225,7 +225,7 @@ Insight line beneath the rows should be generated from the top groups, for examp
 Only produce the sentence when enough data exists to make it useful.
 
 ## Reusable component plan
-Create a small analytics component layer rather than expanding one huge screen file.
+The V4 implementation uses a small analytics component layer rather than expanding one huge screen file.
 
 Implemented analytics components:
 - `ProgressRangeSelector`
