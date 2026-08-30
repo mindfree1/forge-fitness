@@ -1,35 +1,97 @@
-import { useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { Card } from '@/components/Card';
 import { MetricTile } from '@/components/MetricTile';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { Screen } from '@/components/Screen';
 import { Body, Eyebrow, SectionTitle, Title } from '@/components/Typography';
-import { WeekStrip } from '@/components/WeekStrip';
+import { WeekStrip, type WeekActivityItem } from '@/components/WeekStrip';
 import { useFitness } from '@/context/FitnessProvider';
-import { todayWorkout } from '@/lib/seed';
+import { getActiveProgram, getPersonalBestHistory, getRecommendedWorkoutTemplate, getWorkoutHistory } from '@/lib/db';
 import { colors, radii } from '@/lib/theme';
+import type { PersonalBestHistoryItem, Program, WorkoutSession, WorkoutTemplate } from '@/lib/types';
+
+function startOfWeek(date = new Date()) {
+  const value = new Date(date);
+  const daysFromMonday = (value.getDay() + 6) % 7;
+  value.setDate(value.getDate() - daysFromMonday);
+  value.setHours(0, 0, 0, 0);
+  return value;
+}
+
+function sameLocalDay(a: Date, b: Date) {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+}
+
+function weekActivityFromHistory(history: WorkoutSession[]): WeekActivityItem[] {
+  const start = startOfWeek();
+  const today = new Date();
+  return Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(start);
+    date.setDate(start.getDate() + index);
+    const done = history.some((session) => session.completedAt && sameLocalDay(new Date(session.completedAt), date));
+    return {
+      day: ['M', 'T', 'W', 'T', 'F', 'S', 'S'][index],
+      done,
+      today: sameLocalDay(today, date),
+    };
+  });
+}
+
+function formatPb(item: PersonalBestHistoryItem | null) {
+  if (!item) return 'Complete a set to start';
+  const value = Number.isInteger(item.value) ? String(item.value) : item.value.toFixed(1);
+  if (item.metric === 'weight') return `${value} kg max set`;
+  if (item.metric === 'reps') return `${value} reps`;
+  if (item.metric === 'e1rm') return `${value} kg e1RM`;
+  return `${value} kg volume`;
+}
 
 export default function TodayScreen() {
-  const { latestWeight, addWeight } = useFitness();
+  const { weights, latestWeight, addWeight } = useFitness();
   const [weightOpen, setWeightOpen] = useState(false);
   const [weight, setWeight] = useState(latestWeight?.weightKg.toFixed(1) ?? '72.8');
+  const [program, setProgram] = useState<Program | null>(null);
+  const [template, setTemplate] = useState<WorkoutTemplate | null>(null);
+  const [history, setHistory] = useState<WorkoutSession[]>([]);
+  const [latestPb, setLatestPb] = useState<PersonalBestHistoryItem | null>(null);
   const currentWeight = latestWeight?.weightKg ?? 72.8;
+  const startingWeight = weights[0]?.weightKg ?? currentWeight;
+  const weightDelta = currentWeight - startingWeight;
+
+  useFocusEffect(useCallback(() => {
+    Promise.all([
+      getActiveProgram(),
+      getRecommendedWorkoutTemplate(),
+      getWorkoutHistory(60),
+      getPersonalBestHistory(1),
+    ]).then(([nextProgram, nextTemplate, nextHistory, pbHistory]) => {
+      setProgram(nextProgram);
+      setTemplate(nextTemplate);
+      setHistory(nextHistory);
+      setLatestPb(pbHistory[0] ?? null);
+    }).catch(() => undefined);
+  }, []));
+
+  const weekActivity = useMemo(() => weekActivityFromHistory(history), [history]);
+  const sessionsThisWeek = weekActivity.filter((item) => item.done).length;
+  const targetSessions = program?.targetSessionsPerWeek ?? 4;
+  const dayName = new Date().toLocaleDateString('en-AU', { weekday: 'long' });
 
   return (
     <Screen>
       <View style={styles.topRow}>
         <View>
-          <Eyebrow>Forge · Sunday</Eyebrow>
+          <Eyebrow>Forge · {dayName}</Eyebrow>
           <Title>Build the week.</Title>
         </View>
-        <View style={styles.avatar}><Text style={styles.avatarText}>T</Text></View>
+        <Pressable onPress={() => router.push('/programs')} style={styles.avatar}><MaterialCommunityIcons name="tune-variant" size={20} color={colors.text} /></Pressable>
       </View>
 
       <View style={styles.metricRow}>
-        <MetricTile label="Body weight" value={currentWeight.toFixed(1)} suffix="kg" detail="↓ 0.8 kg · 6 weeks" />
+        <MetricTile label="Body weight" value={currentWeight.toFixed(1)} suffix="kg" detail={`${weightDelta >= 0 ? '+' : ''}${weightDelta.toFixed(1)} kg from start`} />
         <MetricTile label="Today steps" value="8,421" detail="84% of 10K goal · preview" accent />
       </View>
 
@@ -41,49 +103,59 @@ export default function TodayScreen() {
 
       <View style={styles.sectionHead}>
         <SectionTitle>This week</SectionTitle>
-        <Text style={styles.sectionMeta}>4 / 4 sessions</Text>
+        <Text style={styles.sectionMeta}>{sessionsThisWeek} / {targetSessions} sessions</Text>
       </View>
       <Card>
         <View style={styles.streakRow}>
           <View>
-            <Text style={styles.streakNumber}>4</Text>
-            <Text style={styles.streakLabel}>workout streak</Text>
+            <Text style={styles.streakNumber}>{sessionsThisWeek}</Text>
+            <Text style={styles.streakLabel}>sessions completed</Text>
           </View>
           <View style={styles.fireBadge}><MaterialCommunityIcons name="fire" size={27} color={colors.bg} /></View>
         </View>
-        <WeekStrip />
+        <WeekStrip activity={weekActivity} />
       </Card>
 
       <View style={styles.sectionHead}>
-        <SectionTitle>Today's session</SectionTitle>
-        <Text style={styles.sectionMeta}>{todayWorkout.duration}</Text>
+        <SectionTitle>Next session</SectionTitle>
+        <Text style={styles.sectionMeta}>{template ? `${template.durationMinutes} min` : 'Set up'}</Text>
       </View>
-      <Card style={styles.workoutCard}>
-        <View style={styles.tag}><Text style={styles.tagText}>PUSH · STRENGTH</Text></View>
-        <Text style={styles.workoutTitle}>{todayWorkout.title}</Text>
-        <Body>{todayWorkout.subtitle}</Body>
-        <View style={styles.workoutStats}>
-          <View><Text style={styles.statValue}>5</Text><Text style={styles.statLabel}>Exercises</Text></View>
-          <View style={styles.rule} />
-          <View><Text style={styles.statValue}>18</Text><Text style={styles.statLabel}>Working sets</Text></View>
-          <View style={styles.rule} />
-          <View><Text style={styles.statValue}>+4.2%</Text><Text style={styles.statLabel}>Volume target</Text></View>
-        </View>
-        <PrimaryButton label="Start workout" icon="lightning-bolt" onPress={() => router.push('/train')} />
-      </Card>
+      {template ? (
+        <Card style={styles.workoutCard}>
+          <View style={styles.tag}><Text style={styles.tagText}>NEXT · ROTATION</Text></View>
+          <Text style={styles.workoutTitle}>{template.name}</Text>
+          <Body>{template.subtitle}</Body>
+          <View style={styles.workoutStats}>
+            <View><Text style={styles.statValue}>{template.exerciseCount}</Text><Text style={styles.statLabel}>Exercises</Text></View>
+            <View style={styles.rule} />
+            <View><Text style={styles.statValue}>{template.workingSets}</Text><Text style={styles.statLabel}>Working sets</Text></View>
+            <View style={styles.rule} />
+            <View><Text style={styles.statValue}>{targetSessions}/wk</Text><Text style={styles.statLabel}>Training target</Text></View>
+          </View>
+          <PrimaryButton label="Start workout" icon="lightning-bolt" onPress={() => router.push('/train')} />
+        </Card>
+      ) : (
+        <Card style={styles.workoutCard}>
+          <Text style={styles.workoutTitle}>Create your rotation</Text>
+          <Body>Choose your weekly target and build the sessions you want Forge to rotate through.</Body>
+          <PrimaryButton label="Open My Program" icon="tune" onPress={() => router.push('/programs')} />
+        </Card>
+      )}
 
       <View style={styles.sectionHead}>
         <SectionTitle>Latest PB</SectionTitle>
-        <Text style={styles.sectionMeta}>8 days ago</Text>
+        <Text style={styles.sectionMeta}>{latestPb ? new Date(latestPb.achievedAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }) : 'No records'}</Text>
       </View>
-      <Card style={styles.pbCard}>
-        <View style={styles.pbIcon}><MaterialCommunityIcons name="trophy-outline" size={24} color={colors.accent} /></View>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.pbExercise}>Dumbbell Bench Press</Text>
-          <Text style={styles.pbValue}>15 kg × 10</Text>
-        </View>
-        <Text style={styles.pbDelta}>+2 reps</Text>
-      </Card>
+      <Pressable onPress={() => router.push('/pb-history')}>
+        <Card style={styles.pbCard}>
+          <View style={styles.pbIcon}><MaterialCommunityIcons name="trophy-outline" size={24} color={colors.accent} /></View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.pbExercise}>{latestPb?.exerciseName ?? 'Personal best history'}</Text>
+            <Text style={styles.pbValue}>{formatPb(latestPb)}</Text>
+          </View>
+          <MaterialCommunityIcons name="chevron-right" size={21} color={colors.faint} />
+        </Card>
+      </Pressable>
 
       <Modal visible={weightOpen} transparent animationType="fade" onRequestClose={() => setWeightOpen(false)}>
         <View style={styles.modalBackdrop}>
@@ -121,7 +193,6 @@ export default function TodayScreen() {
 const styles = StyleSheet.create({
   topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 10, marginBottom: 26 },
   avatar: { width: 42, height: 42, borderRadius: 21, backgroundColor: colors.surface2, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
-  avatarText: { color: colors.text, fontWeight: '900', fontSize: 15 },
   metricRow: { flexDirection: 'row', gap: 10 },
   quickAction: { height: 52, marginTop: 10, borderRadius: radii.md, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 15 },
   quickText: { flex: 1, color: colors.text, fontSize: 13, fontWeight: '800' },
@@ -142,8 +213,7 @@ const styles = StyleSheet.create({
   pbCard: { flexDirection: 'row', alignItems: 'center', gap: 13 },
   pbIcon: { height: 48, width: 48, borderRadius: 24, backgroundColor: colors.accentSoft, alignItems: 'center', justifyContent: 'center' },
   pbExercise: { color: colors.muted, fontSize: 12, fontWeight: '700' },
-  pbValue: { color: colors.text, fontSize: 19, fontWeight: '900', marginTop: 3 },
-  pbDelta: { color: colors.accent, fontSize: 11, fontWeight: '900' },
+  pbValue: { color: colors.text, fontSize: 17, fontWeight: '900', marginTop: 3 },
   modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'flex-end' },
   modalCard: { backgroundColor: colors.surface, borderTopLeftRadius: 30, borderTopRightRadius: 30, padding: 24, paddingBottom: 38, borderTopWidth: 1, borderColor: colors.border },
   inputRow: { flexDirection: 'row', alignItems: 'baseline', marginVertical: 26 },
