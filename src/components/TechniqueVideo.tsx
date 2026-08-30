@@ -5,6 +5,8 @@ type Props = {
   url: string;
 };
 
+const APP_REFERRER = 'https://com.mindfree1.forge';
+
 function youtubeId(url: string) {
   try {
     const parsed = new URL(url);
@@ -45,18 +47,24 @@ export default function TechniqueVideo({ url }: Props) {
     );
   }
 
+  const embedUrl = `https://www.youtube.com/embed/${encodeURIComponent(id)}?playsinline=1&rel=0&modestbranding=1&origin=${encodeURIComponent(APP_REFERRER)}`;
+
   return (
     <WebView
       source={{
-        uri: `https://www.youtube-nocookie.com/embed/${encodeURIComponent(
-          id
-        )}?playsinline=1&rel=0&modestbranding=1`,
+        uri: embedUrl,
+        headers: {
+          Referer: APP_REFERRER,
+        },
       }}
       style={styles.webview}
       javaScriptEnabled
       domStorageEnabled
       allowsFullscreenVideo
+      allowsInlineMediaPlayback
       mediaPlaybackRequiresUserAction
+      thirdPartyCookiesEnabled
+      applicationNameForUserAgent="Forge/0.1.0"
     />
   );
 }
