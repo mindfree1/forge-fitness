@@ -1,5 +1,5 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { PropsWithChildren, useMemo, useState } from 'react';
+import { PropsWithChildren, useMemo, useState, type ReactNode } from 'react';
 import type { ColorValue, LayoutChangeEvent, ViewStyle } from 'react-native';
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Card } from '@/components/Card';
@@ -44,7 +44,7 @@ export function AnalyticsCardHeader({
   title: string;
   subtitle?: string;
   accent?: ColorValue;
-  right?: React.ReactNode;
+  right?: ReactNode;
   onTitlePress?: () => void;
 }) {
   const titleContent = (
@@ -147,8 +147,8 @@ export function BarChart({ points, accent = '#6D9CFF', height = 126 }: { points:
 export function LineChart({ points, accent = colors.accent, height = 142 }: { points: ChartPoint[]; accent?: ColorValue; height?: number }) {
   const [width, setWidth] = useState(0);
   const values = points.map((point) => point.value);
-  const min = Math.min(...values);
-  const max = Math.max(...values);
+  const min = points.length ? Math.min(...values) : 0;
+  const max = points.length ? Math.max(...values) : 0;
   const range = Math.max(max - min, Math.abs(max) * 0.05, 0.1);
   const plotHeight = height - 28;
   const labelStep = Math.max(1, Math.ceil(points.length / 4));
