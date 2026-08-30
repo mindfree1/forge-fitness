@@ -1,9 +1,89 @@
 import type { Exercise } from './types';
 
+export const exerciseLibrarySeed = [
+  { slug: 'dumbbell-bench-press', name: 'Dumbbell Bench Press', muscle: 'Chest', equipment: 'Dumbbells', techniqueNotes: 'Set the shoulder blades, keep wrists stacked, and lower with control.' },
+  { slug: 'incline-dumbbell-press', name: 'Incline Dumbbell Press', muscle: 'Upper chest', equipment: 'Dumbbells', techniqueNotes: 'Use a low incline, keep the chest tall, and avoid shrugging into the press.' },
+  { slug: 'seated-shoulder-press', name: 'Seated Shoulder Press', muscle: 'Shoulders', equipment: 'Dumbbells', techniqueNotes: 'Brace the trunk, keep forearms vertical, and finish without overextending the lower back.' },
+  { slug: 'cable-lateral-raise', name: 'Cable Lateral Raise', muscle: 'Side delts', equipment: 'Cable', techniqueNotes: 'Lead with the elbow and keep tension through the middle range.' },
+  { slug: 'rope-pushdown', name: 'Rope Triceps Pushdown', muscle: 'Triceps', equipment: 'Cable', techniqueNotes: 'Keep elbows pinned and fully shorten the triceps without swinging.' },
+  { slug: 'lat-pulldown', name: 'Lat Pulldown', muscle: 'Lats', equipment: 'Cable', techniqueNotes: 'Drive elbows toward the hips and keep the ribcage controlled.' },
+  { slug: 'chest-supported-row', name: 'Chest-Supported Row', muscle: 'Upper back', equipment: 'Dumbbells', techniqueNotes: 'Keep the chest planted and pull elbows back without shrugging.' },
+  { slug: 'single-arm-cable-row', name: 'Single-Arm Cable Row', muscle: 'Lats', equipment: 'Cable', techniqueNotes: 'Reach long, then pull the elbow toward the back pocket.' },
+  { slug: 'reverse-fly', name: 'Reverse Fly', muscle: 'Rear delts', equipment: 'Dumbbells', techniqueNotes: 'Move from the shoulder and keep the traps relaxed.' },
+  { slug: 'incline-dumbbell-curl', name: 'Incline Dumbbell Curl', muscle: 'Biceps', equipment: 'Dumbbells', techniqueNotes: 'Keep the upper arm still and use a full comfortable stretch.' },
+  { slug: 'hammer-curl', name: 'Hammer Curl', muscle: 'Biceps', equipment: 'Dumbbells', techniqueNotes: 'Keep the wrist neutral and avoid swinging the shoulder forward.' },
+  { slug: 'romanian-deadlift', name: 'Romanian Deadlift', muscle: 'Hamstrings', equipment: 'Barbell', techniqueNotes: 'Push the hips back, keep the bar close, and stop before the lower back rounds.' },
+  { slug: 'back-squat', name: 'Back Squat', muscle: 'Quads', equipment: 'Barbell', techniqueNotes: 'Brace before each rep and keep the whole foot connected to the floor.' },
+  { slug: 'bulgarian-split-squat', name: 'Bulgarian Split Squat', muscle: 'Quads · Glutes', equipment: 'Dumbbells', techniqueNotes: 'Use a stable stance and let the front knee travel naturally over the toes.' },
+  { slug: 'seated-leg-curl', name: 'Seated Leg Curl', muscle: 'Hamstrings', equipment: 'Machine', techniqueNotes: 'Keep hips down and control the eccentric all the way out.' },
+  { slug: 'standing-calf-raise', name: 'Standing Calf Raise', muscle: 'Calves', equipment: 'Machine', techniqueNotes: 'Pause in the stretched position and finish each rep tall.' },
+  { slug: 'pull-up', name: 'Pull-Up', muscle: 'Lats', equipment: 'Bodyweight', techniqueNotes: 'Start from a controlled hang and drive the elbows down rather than reaching with the chin.' },
+  { slug: 'face-pull', name: 'Face Pull', muscle: 'Rear delts', equipment: 'Cable', techniqueNotes: 'Pull toward eye level and rotate the hands apart at the finish.' },
+  { slug: 'cable-fly', name: 'Cable Fly', muscle: 'Chest', equipment: 'Cable', techniqueNotes: 'Keep a soft elbow and bring the upper arms across the chest without losing shoulder position.' },
+  { slug: 'plank', name: 'Plank', muscle: 'Core', equipment: 'Bodyweight', techniqueNotes: 'Squeeze glutes and ribs down so the trunk stays rigid.' },
+] as const;
+
+export const defaultProgramSeed = {
+  name: 'Forge Athletic',
+  goal: 'V-taper athletic build',
+  targetSessionsPerWeek: 4,
+  templates: [
+    {
+      name: 'Push Strength',
+      subtitle: 'Chest · Shoulders · Triceps',
+      durationMinutes: 55,
+      exercises: [
+        ['dumbbell-bench-press', 4, 8, 10, 120],
+        ['incline-dumbbell-press', 3, 8, 12, 105],
+        ['seated-shoulder-press', 3, 8, 10, 105],
+        ['cable-lateral-raise', 4, 12, 18, 75],
+        ['rope-pushdown', 3, 10, 15, 75],
+      ],
+    },
+    {
+      name: 'Pull Strength',
+      subtitle: 'Lats · Upper back · Biceps',
+      durationMinutes: 55,
+      exercises: [
+        ['pull-up', 3, 5, 10, 120],
+        ['lat-pulldown', 3, 8, 12, 105],
+        ['chest-supported-row', 4, 8, 12, 105],
+        ['reverse-fly', 3, 12, 18, 75],
+        ['incline-dumbbell-curl', 3, 8, 12, 75],
+      ],
+    },
+    {
+      name: 'Lower Strength',
+      subtitle: 'Quads · Hamstrings · Glutes',
+      durationMinutes: 60,
+      exercises: [
+        ['back-squat', 4, 5, 8, 150],
+        ['romanian-deadlift', 4, 6, 10, 135],
+        ['bulgarian-split-squat', 3, 8, 12, 105],
+        ['seated-leg-curl', 3, 10, 15, 75],
+        ['standing-calf-raise', 4, 10, 15, 75],
+      ],
+    },
+    {
+      name: 'Upper Shape',
+      subtitle: 'Upper chest · Lats · Delts · Arms',
+      durationMinutes: 55,
+      exercises: [
+        ['incline-dumbbell-press', 3, 8, 12, 105],
+        ['single-arm-cable-row', 3, 10, 12, 90],
+        ['cable-lateral-raise', 4, 12, 20, 75],
+        ['face-pull', 3, 12, 18, 75],
+        ['hammer-curl', 3, 10, 15, 75],
+        ['rope-pushdown', 3, 10, 15, 75],
+      ],
+    },
+  ],
+} as const;
+
 export const todayWorkout = {
-  title: 'Push Strength',
-  subtitle: 'Chest · Shoulders · Triceps',
-  duration: '55 min',
+  title: defaultProgramSeed.templates[0].name,
+  subtitle: defaultProgramSeed.templates[0].subtitle,
+  duration: `${defaultProgramSeed.templates[0].durationMinutes} min`,
   exercises: [
     {
       id: 'dumbbell-bench-press',
@@ -18,7 +98,7 @@ export const todayWorkout = {
       name: 'Incline Dumbbell Press',
       muscle: 'Upper chest',
       equipment: 'Dumbbells',
-      target: '3 × 10',
+      target: '3 × 8–12',
       previous: ['12.5 × 10', '12.5 × 10', '12.5 × 9'],
     },
     {
@@ -34,15 +114,15 @@ export const todayWorkout = {
       name: 'Cable Lateral Raise',
       muscle: 'Side delts',
       equipment: 'Cable',
-      target: '3 × 12–15',
-      previous: ['5 × 15', '5 × 14', '5 × 12'],
+      target: '4 × 12–18',
+      previous: ['5 × 15', '5 × 14', '5 × 12', '5 × 12'],
     },
     {
       id: 'rope-pushdown',
       name: 'Rope Triceps Pushdown',
       muscle: 'Triceps',
       equipment: 'Cable',
-      target: '3 × 10–12',
+      target: '3 × 10–15',
       previous: ['20 × 12', '20 × 11', '20 × 10'],
     },
   ] satisfies Exercise[],

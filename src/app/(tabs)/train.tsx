@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -6,31 +6,49 @@ import { Card } from '@/components/Card';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { Screen } from '@/components/Screen';
 import { Body, Eyebrow, SectionTitle, Title } from '@/components/Typography';
-import { finishWorkout, getActiveWorkout, startWorkout } from '@/lib/db';
-import { todayWorkout } from '@/lib/seed';
+import {
+  finishWorkout,
+  getActiveWorkout,
+  getNextWorkoutTemplate,
+  getRecommendedWorkoutTemplate,
+  getWorkoutTemplate,
+  startWorkout,
+} from '@/lib/db';
 import { colors, radii } from '@/lib/theme';
-import type { WorkoutSession } from '@/lib/types';
+import type { WorkoutSession, WorkoutTemplate } from '@/lib/types';
 
 export default function TrainScreen() {
   const [activeWorkout, setActiveWorkout] = useState<WorkoutSession | null>(null);
+  const [template, setTemplate] = useState<WorkoutTemplate | null>(null);
+  const [nextTemplate, setNextTemplate] = useState<WorkoutTemplate | null>(null);
   const [starting, setStarting] = useState(false);
 
-  const refreshActiveWorkout = useCallback(() => {
-    getActiveWorkout().then(setActiveWorkout).catch(() => setActiveWorkout(null));
+  const refresh = useCallback(async () => {
+    const active = await getActiveWorkout();
+    setActiveWorkout(active);
+    const selected = active?.templateId
+      ? await getWorkoutTemplate(active.templateId)
+      : await getRecommendedWorkoutTemplate();
+    setTemplate(selected);
+    setNextTemplate(selected ? await getNextWorkoutTemplate(selected.id) : null);
   }, []);
 
-  useEffect(refreshActiveWorkout, [refreshActiveWorkout]);
   useFocusEffect(useCallback(() => {
-    refreshActiveWorkout();
-  }, [refreshActiveWorkout]));
+    refresh().catch(() => undefined);
+  }, [refresh]));
+
+  const openExercise = (exerciseSlug: string) => {
+    if (!template) return;
+    router.push(`/exercise/${exerciseSlug}?templateId=${template.id}`);
+  };
 
   const beginOrResume = async () => {
-    if (starting) return;
+    if (starting || !template || !template.exercises.length) return;
     setStarting(true);
     try {
-      const workout = activeWorkout ?? await startWorkout(todayWorkout.title);
+      const workout = activeWorkout ?? await startWorkout(template.name, template.id);
       setActiveWorkout(workout);
-      router.push(`/exercise/${todayWorkout.exercises[0].id}`);
+      openExercise(template.exercises[0].slug);
     } finally {
       setStarting(false);
     }
@@ -40,7 +58,7 @@ export default function TrainScreen() {
     if (!activeWorkout) return;
     Alert.alert(
       'Finish workout?',
-      'Your completed sets and PBs will stay saved in Forge.',
+      'Your completed sets and PBs will stay saved. Forge will move to the next session in your rotation.',
       [
         { text: 'Keep training', style: 'cancel' },
         {
@@ -48,35 +66,63 @@ export default function TrainScreen() {
           style: 'destructive',
           onPress: async () => {
             await finishWorkout(activeWorkout.id);
-            setActiveWorkout(null);
+            await refresh();
           },
         },
       ],
     );
   };
 
+  if (!template) {
+    return (
+      <Screen>
+        <View style={styles.header}>
+          <Eyebrow>Training</Eyebrow>
+          <Title>Build your program.</Title>
+          <Body style={{ marginTop: 8 }}>Create a workout rotation, then Forge will keep the next session ready whenever you train.</Body>
+        </View>
+        <PrimaryButton label="Open My Program" icon="tune" onPress={() => router.push('/programs')} />
+      </Screen>
+    );
+  }
+
   return (
     <Screen>
-      <View style={styles.header}>
-        <Eyebrow>Training</Eyebrow>
-        <Title>Push Strength</Title>
-        <Body style={{ marginTop: 8 }}>{todayWorkout.subtitle} · {todayWorkout.duration}</Body>
+      <View style={styles.headerRow}>
+        <View style={styles.header}>
+          <Eyebrow>Training</Eyebrow>
+          <Title>{template.name}</Title>
+          <Body style={{ marginTop: 8 }}>{template.subtitle} · {template.durationMinutes} min</Body>
+        </View>
+        <Pressable onPress={() => router.push('/programs')} style={styles.manageButton}>
+          <MaterialCommunityIcons name="tune-variant" size={19} color={colors.accent} />
+        </Pressable>
       </View>
 
       <Card style={styles.hero}>
         <View style={styles.heroTop}>
-          <View>
+          <View style={{ flex: 1 }}>
             <Text style={styles.heroLabel}>{activeWorkout ? 'Session in progress' : "Today's target"}</Text>
-            <Text style={styles.heroValue}>{activeWorkout ? 'Push Strength · Active' : '18 working sets'}</Text>
+            <Text style={styles.heroValue}>{activeWorkout ? `${template.name} · Active` : `${template.workingSets} working sets`}</Text>
           </View>
           <View style={styles.roundIcon}><MaterialCommunityIcons name={activeWorkout ? 'progress-clock' : 'dumbbell'} size={24} color={colors.accent} /></View>
         </View>
         <Text style={styles.heroCopy}>
           {activeWorkout
-            ? 'Your set entries are being saved locally. Pick up exactly where you left off.'
-            : 'Beat last session by one rep or a small weight increase. Clean form wins.'}
+            ? 'Your set entries are saved locally. Pick up exactly where you left off.'
+            : 'Progress a rep or a small amount of load when form stays clean. The rotation moves with your week.'}
         </Text>
-        <PrimaryButton label={activeWorkout ? 'Resume session' : 'Begin session'} icon={activeWorkout ? 'play' : 'play'} onPress={beginOrResume} />
+        {template.exercises.length > 0 ? (
+          <PrimaryButton label={activeWorkout ? 'Resume session' : 'Begin session'} icon="play" onPress={beginOrResume} />
+        ) : (
+          <PrimaryButton
+            label="Add exercises"
+            icon="plus"
+            onPress={() => router.push({
+              pathname: '/workout-template/[id]',
+              params: { id: String(template.id) },
+            })} />
+        )}
         {activeWorkout && (
           <Pressable onPress={confirmFinish} style={styles.finishButton}>
             <MaterialCommunityIcons name="flag-checkered" size={17} color={colors.muted} />
@@ -87,19 +133,26 @@ export default function TrainScreen() {
 
       <View style={styles.sectionHead}>
         <SectionTitle>Workout</SectionTitle>
-        <Text style={styles.meta}>{todayWorkout.exercises.length} exercises</Text>
-      </View>
-
-      <View style={styles.list}>
-        {todayWorkout.exercises.map((exercise, index) => (
-          <Pressable key={exercise.id} onPress={() => router.push(`/exercise/${exercise.id}`)} style={({ pressed }) => [styles.exercise, pressed && { opacity: 0.75 }]}>
+        <Pressable
+          onPress={() =>
+          router.push({
+              pathname: '/workout-template/[id]',
+              params: { id: String(template.id) },
+            })
+          }
+        >
+  <Text style={styles.editMeta}>EDIT</Text>
+</Pressable>
+    </View><View style={styles.list}>
+        {template.exercises.map((exercise, index) => (
+          <Pressable key={exercise.templateExerciseId} onPress={() => openExercise(exercise.slug)} style={({ pressed }) => [styles.exercise, pressed && { opacity: 0.75 }]}>
             <View style={styles.index}><Text style={styles.indexText}>{String(index + 1).padStart(2, '0')}</Text></View>
             <View style={styles.exerciseBody}>
               <Text style={styles.exerciseName}>{exercise.name}</Text>
-              <Text style={styles.exerciseMeta}>{exercise.target} · {exercise.muscle}</Text>
+              <Text style={styles.exerciseMeta}>{exercise.targetSets} × {exercise.minReps}{exercise.minReps !== exercise.maxReps ? `–${exercise.maxReps}` : ''} · {exercise.muscle}</Text>
               <View style={styles.previousRow}>
-                <Text style={styles.previousLabel}>LAST</Text>
-                <Text style={styles.previousValue}>{exercise.previous[0]}</Text>
+                <Text style={styles.previousLabel}>REST</Text>
+                <Text style={styles.previousValue}>{exercise.restSeconds}s</Text>
               </View>
             </View>
             <MaterialCommunityIcons name="chevron-right" size={23} color={colors.faint} />
@@ -107,22 +160,28 @@ export default function TrainScreen() {
         ))}
       </View>
 
-      <View style={styles.sectionHead}>
-        <SectionTitle>Next up</SectionTitle>
-        <Text style={styles.meta}>Tuesday</Text>
-      </View>
-      <Card style={styles.nextCard}>
-        <View><Text style={styles.nextTitle}>Pull Strength</Text><Body>Back · Rear delts · Biceps</Body></View>
-        <View style={styles.nextBadge}><Text style={styles.nextBadgeText}>52 MIN</Text></View>
-      </Card>
+      {nextTemplate && (
+        <>
+          <View style={styles.sectionHead}>
+            <SectionTitle>Next up</SectionTitle>
+            <Text style={styles.meta}>Rotation</Text>
+          </View>
+          <Card style={styles.nextCard}>
+            <View style={{ flex: 1 }}><Text style={styles.nextTitle}>{nextTemplate.name}</Text><Body>{nextTemplate.subtitle}</Body></View>
+            <View style={styles.nextBadge}><Text style={styles.nextBadgeText}>{nextTemplate.durationMinutes} MIN</Text></View>
+          </Card>
+        </>
+      )}
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  header: { paddingTop: 10, marginBottom: 24 },
+  headerRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+  header: { flex: 1, paddingTop: 10, marginBottom: 24 },
+  manageButton: { marginTop: 8, height: 44, width: 44, borderRadius: 22, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
   hero: { backgroundColor: colors.surface2, gap: 17 },
-  heroTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  heroTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   heroLabel: { color: colors.faint, fontSize: 10, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 1 },
   heroValue: { color: colors.text, fontSize: 22, fontWeight: '900', marginTop: 5 },
   roundIcon: { height: 50, width: 50, borderRadius: 25, backgroundColor: colors.accentSoft, alignItems: 'center', justifyContent: 'center' },
@@ -131,6 +190,7 @@ const styles = StyleSheet.create({
   finishText: { color: colors.muted, fontSize: 11, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.6 },
   sectionHead: { marginTop: 30, marginBottom: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   meta: { color: colors.faint, fontSize: 10, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.8 },
+  editMeta: { color: colors.accent, fontSize: 10, fontWeight: '900', letterSpacing: 0.8 },
   list: { borderRadius: radii.lg, overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border },
   exercise: { minHeight: 96, paddingVertical: 15, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border, gap: 12 },
   index: { width: 34, height: 34, borderRadius: 17, backgroundColor: colors.surface3, alignItems: 'center', justifyContent: 'center' },
@@ -141,7 +201,7 @@ const styles = StyleSheet.create({
   previousRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 9 },
   previousLabel: { color: colors.faint, fontSize: 8, fontWeight: '900', letterSpacing: 0.8 },
   previousValue: { color: colors.accent, fontSize: 10, fontWeight: '900' },
-  nextCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  nextCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   nextTitle: { color: colors.text, fontSize: 17, fontWeight: '900', marginBottom: 4 },
   nextBadge: { paddingHorizontal: 10, paddingVertical: 7, borderRadius: radii.pill, backgroundColor: colors.surface3 },
   nextBadgeText: { color: colors.muted, fontSize: 9, fontWeight: '900', letterSpacing: 0.7 },
