@@ -183,7 +183,13 @@ export default function WorkoutTemplateScreen() {
         ))}
       </View>
 
-      <View style={styles.sectionHead}><SectionTitle>Add exercise</SectionTitle><Pressable onPress={() => setCustomOpen(true)}><Text style={styles.accentMeta}>+ CUSTOM</Text></Pressable></View>
+      <View style={styles.sectionHead}>
+        <SectionTitle>Add exercise</SectionTitle>
+        <Pressable onPress={() => setCustomOpen(true)} style={({ pressed }) => [styles.customButton, pressed && { opacity: 0.72 }]}>
+          <MaterialCommunityIcons name="plus" size={16} color={colors.bg} />
+          <Text style={styles.customButtonText}>Add custom</Text>
+        </Pressable>
+      </View>
       <TextInput
         value={search}
         onChangeText={setSearch}
@@ -246,7 +252,8 @@ const styles = StyleSheet.create({
   navTitle: { color: colors.muted, fontSize: 12, fontWeight: '800' },
   sectionHead: { marginTop: 30, marginBottom: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   meta: { color: colors.faint, fontSize: 9, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.8 },
-  accentMeta: { color: colors.accent, fontSize: 9, fontWeight: '900', letterSpacing: 0.8 },
+  customButton: { minHeight: 42, paddingHorizontal: 14, borderRadius: radii.pill, backgroundColor: colors.accent, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  customButtonText: { color: colors.bg, fontSize: 11, fontWeight: '900', letterSpacing: 0.3 },
   formCard: { gap: 10 },
   label: { color: colors.faint, fontSize: 8, fontWeight: '900', letterSpacing: 0.9 },
   input: { minHeight: 48, borderRadius: radii.md, backgroundColor: colors.surface3, borderWidth: 1, borderColor: colors.border, color: colors.text, fontSize: 14, fontWeight: '800', paddingHorizontal: 14 },
