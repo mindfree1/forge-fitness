@@ -16,7 +16,7 @@ import type {
 
 let databasePromise: Promise<SQLite.SQLiteDatabase> | null = null;
 
-async function database() {
+export async function database() {
   if (!databasePromise) databasePromise = SQLite.openDatabaseAsync('forge.db');
   return databasePromise;
 }
