@@ -269,14 +269,7 @@ export default function ExerciseScreen() {
         {exercise.videoUrl ? (
           <>
             <View style={styles.videoFrame}>
-              <TechniqueVideo
-                url={exercise.videoUrl}
-                dom={{
-                    style: { height: 210, width: '100%' },
-                    scrollEnabled: false,
-                    useExpoDOMWebView: false,
-                }}
-              />
+            <TechniqueVideo url={exercise.videoUrl} />
             </View>
             <View>
               <Text style={styles.techniqueTitle}>Watch technique video</Text>
