@@ -52,14 +52,14 @@ function formatPb(item: PersonalBestHistoryItem | null) {
 export default function TodayScreen() {
   const { weights, latestWeight, addWeight } = useFitness();
   const [weightOpen, setWeightOpen] = useState(false);
-  const [weight, setWeight] = useState(latestWeight?.weightKg.toFixed(1) ?? '72.8');
+  const [weight, setWeight] = useState('');
   const [program, setProgram] = useState<Program | null>(null);
   const [template, setTemplate] = useState<WorkoutTemplate | null>(null);
   const [history, setHistory] = useState<WorkoutSession[]>([]);
   const [latestPb, setLatestPb] = useState<PersonalBestHistoryItem | null>(null);
-  const currentWeight = latestWeight?.weightKg ?? 72.8;
-  const startingWeight = weights[0]?.weightKg ?? currentWeight;
-  const weightDelta = currentWeight - startingWeight;
+  const currentWeight = latestWeight?.weightKg ?? null;
+  const startingWeight = weights[0]?.weightKg ?? null;
+  const weightDelta = currentWeight != null && startingWeight != null ? currentWeight - startingWeight : null;
 
   useFocusEffect(useCallback(() => {
     Promise.all([
@@ -91,11 +91,22 @@ export default function TodayScreen() {
       </View>
 
       <View style={styles.metricRow}>
-        <MetricTile label="Body weight" value={currentWeight.toFixed(1)} suffix="kg" detail={`${weightDelta >= 0 ? '+' : ''}${weightDelta.toFixed(1)} kg from start`} />
-        <MetricTile label="Today steps" value="8,421" detail="84% of 10K goal · preview" accent />
+        <MetricTile
+          label="Body weight"
+          value={currentWeight == null ? '—' : currentWeight.toFixed(1)}
+          suffix={currentWeight == null ? undefined : 'kg'}
+          detail={weightDelta == null ? 'No weigh-ins yet' : `${weightDelta >= 0 ? '+' : ''}${weightDelta.toFixed(1)} kg from start`}
+        />
+        <MetricTile label="Today steps" value="—" detail="Health Connect not connected" accent />
       </View>
 
-      <Pressable onPress={() => setWeightOpen(true)} style={styles.quickAction}>
+      <Pressable
+        onPress={() => {
+          setWeight(latestWeight?.weightKg.toFixed(1) ?? '');
+          setWeightOpen(true);
+        }}
+        style={styles.quickAction}
+      >
         <MaterialCommunityIcons name="plus-circle-outline" size={19} color={colors.accent} />
         <Text style={styles.quickText}>Log today's weight</Text>
         <MaterialCommunityIcons name="chevron-right" size={20} color={colors.faint} />
@@ -169,6 +180,7 @@ export default function TodayScreen() {
                 keyboardType="decimal-pad"
                 autoFocus
                 style={styles.weightInput}
+                placeholder="—"
                 placeholderTextColor={colors.faint}
               />
               <Text style={styles.kg}>kg</Text>
