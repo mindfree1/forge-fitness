@@ -16,6 +16,7 @@ import {
   updateTemplateExercisePrescription,
   updateWorkoutTemplate,
 } from '@/lib/db';
+import { updateExerciseMedia } from '@/lib/exercises';
 import { colors, radii } from '@/lib/theme';
 import type { ExerciseLibraryItem, WorkoutTemplate, WorkoutTemplateExercise } from '@/lib/types';
 
@@ -33,11 +34,15 @@ export default function WorkoutTemplateScreen() {
   const [minReps, setMinReps] = useState('8');
   const [maxReps, setMaxReps] = useState('12');
   const [restSeconds, setRestSeconds] = useState('90');
+  const [editingExercise, setEditingExercise] = useState<ExerciseLibraryItem | null>(null);
+  const [exerciseVideo, setExerciseVideo] = useState('');
+  const [exerciseNotes, setExerciseNotes] = useState('');
   const [customOpen, setCustomOpen] = useState(false);
   const [customName, setCustomName] = useState('');
   const [customMuscle, setCustomMuscle] = useState('');
   const [customEquipment, setCustomEquipment] = useState('');
   const [customVideo, setCustomVideo] = useState('');
+  const [customNotes, setCustomNotes] = useState('');
 
   const load = useCallback(async () => {
     if (!Number.isFinite(templateId)) return;
@@ -108,6 +113,22 @@ export default function WorkoutTemplateScreen() {
     await load();
   };
 
+  const openExerciseSettings = (exercise: ExerciseLibraryItem) => {
+    setEditingExercise(exercise);
+    setExerciseVideo(exercise.videoUrl ?? '');
+    setExerciseNotes(exercise.techniqueNotes ?? '');
+  };
+
+  const saveExerciseSettings = async () => {
+    if (!editingExercise) return;
+    await updateExerciseMedia(editingExercise.id, {
+      videoUrl: exerciseVideo,
+      techniqueNotes: exerciseNotes,
+    });
+    setEditingExercise(null);
+    await load();
+  };
+
   const addCustomExercise = async () => {
     if (!template || !customName.trim()) return;
     const exerciseId = await createCustomExercise({
@@ -115,12 +136,14 @@ export default function WorkoutTemplateScreen() {
       muscle: customMuscle,
       equipment: customEquipment,
       videoUrl: customVideo,
+      techniqueNotes: customNotes,
     });
     await addExerciseToTemplate(template.id, exerciseId);
     setCustomName('');
     setCustomMuscle('');
     setCustomEquipment('');
     setCustomVideo('');
+    setCustomNotes('');
     setCustomOpen(false);
     await load();
   };
@@ -143,6 +166,7 @@ export default function WorkoutTemplateScreen() {
   if (!template) {
     return <Screen><View style={styles.nav}><Pressable onPress={() => router.back()} style={styles.navButton}><MaterialCommunityIcons name="arrow-left" size={22} color={colors.text} /></Pressable></View><Title>Loading workout…</Title></Screen>;
   }
+
   return (
     <Screen>
       <View style={styles.nav}>
@@ -169,17 +193,27 @@ export default function WorkoutTemplateScreen() {
       <View style={styles.sectionHead}><SectionTitle>Exercises</SectionTitle><Text style={styles.meta}>{template.workingSets} working sets</Text></View>
       <View style={styles.exerciseList}>
         {template.exercises.map((exercise, index) => (
-          <Pressable key={exercise.templateExerciseId} onPress={() => openPrescription(exercise)} style={styles.exerciseRow}>
-            <View style={styles.index}><Text style={styles.indexText}>{String(index + 1).padStart(2, '0')}</Text></View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.exerciseName}>{exercise.name}</Text>
-              <Text style={styles.exerciseMeta}>{exercise.targetSets} × {exercise.minReps}{exercise.minReps !== exercise.maxReps ? `–${exercise.maxReps}` : ''} · {exercise.restSeconds}s rest</Text>
-              <Text style={styles.exerciseMuscle}>{exercise.muscle} · {exercise.equipment}</Text>
-            </View>
-            <Pressable onPress={() => confirmRemove(exercise)} hitSlop={10} style={styles.removeButton}>
-              <MaterialCommunityIcons name="close" size={18} color={colors.faint} />
+          <View key={exercise.templateExerciseId} style={styles.exerciseRow}>
+            <Pressable onPress={() => openPrescription(exercise)} style={styles.exerciseMain}>
+              <View style={styles.index}><Text style={styles.indexText}>{String(index + 1).padStart(2, '0')}</Text></View>
+              <View style={{ flex: 1 }}>
+                <View style={styles.exerciseTitleRow}>
+                  <Text style={styles.exerciseName}>{exercise.name}</Text>
+                  {exercise.videoUrl ? <MaterialCommunityIcons name="youtube" size={16} color={colors.accent} /> : null}
+                </View>
+                <Text style={styles.exerciseMeta}>{exercise.targetSets} × {exercise.minReps}{exercise.minReps !== exercise.maxReps ? `–${exercise.maxReps}` : ''} · {exercise.restSeconds}s rest</Text>
+                <Text style={styles.exerciseMuscle}>{exercise.muscle} · {exercise.equipment}</Text>
+              </View>
             </Pressable>
-          </Pressable>
+            <View style={styles.rowActions}>
+              <Pressable onPress={() => openExerciseSettings(exercise)} hitSlop={8} style={styles.actionButton}>
+                <MaterialCommunityIcons name="pencil-outline" size={18} color={colors.accent} />
+              </Pressable>
+              <Pressable onPress={() => confirmRemove(exercise)} hitSlop={8} style={styles.actionButton}>
+                <MaterialCommunityIcons name="close" size={18} color={colors.faint} />
+              </Pressable>
+            </View>
+          </View>
         ))}
       </View>
 
@@ -190,6 +224,7 @@ export default function WorkoutTemplateScreen() {
           <Text style={styles.customButtonText}>Add custom</Text>
         </Pressable>
       </View>
+      <Body style={{ marginBottom: 12 }}>Use the pencil beside any exercise to save your preferred YouTube technique video and personal form notes.</Body>
       <TextInput
         value={search}
         onChangeText={setSearch}
@@ -201,11 +236,22 @@ export default function WorkoutTemplateScreen() {
         {filteredLibrary.map((exercise) => {
           const added = existingIds.has(exercise.id);
           return (
-            <Pressable key={exercise.id} disabled={added} onPress={() => addExercise(exercise)} style={[styles.libraryRow, added && { opacity: 0.45 }]}>
+            <View key={exercise.id} style={styles.libraryRow}>
               <View style={styles.libraryIcon}><MaterialCommunityIcons name="dumbbell" size={18} color={colors.accent} /></View>
-              <View style={{ flex: 1 }}><Text style={styles.libraryName}>{exercise.name}</Text><Text style={styles.libraryMeta}>{exercise.muscle} · {exercise.equipment}</Text></View>
-              <Text style={added ? styles.added : styles.add}>{added ? 'ADDED' : 'ADD'}</Text>
-            </Pressable>
+              <View style={{ flex: 1 }}>
+                <View style={styles.exerciseTitleRow}>
+                  <Text style={styles.libraryName}>{exercise.name}</Text>
+                  {exercise.videoUrl ? <MaterialCommunityIcons name="youtube" size={14} color={colors.accent} /> : null}
+                </View>
+                <Text style={styles.libraryMeta}>{exercise.muscle} · {exercise.equipment}</Text>
+              </View>
+              <Pressable onPress={() => openExerciseSettings(exercise)} hitSlop={8} style={styles.libraryAction}>
+                <MaterialCommunityIcons name="pencil-outline" size={17} color={colors.muted} />
+              </Pressable>
+              <Pressable disabled={added} onPress={() => addExercise(exercise)} hitSlop={8} style={styles.libraryAction}>
+                <Text style={added ? styles.added : styles.add}>{added ? 'ADDED' : 'ADD'}</Text>
+              </Pressable>
+            </View>
           );
         })}
       </View>
@@ -228,6 +274,38 @@ export default function WorkoutTemplateScreen() {
         </View>
       </Modal>
 
+      <Modal visible={Boolean(editingExercise)} transparent animationType="fade" onRequestClose={() => setEditingExercise(null)}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <Eyebrow>Exercise settings</Eyebrow>
+            <SectionTitle style={{ marginTop: 7 }}>{editingExercise?.name}</SectionTitle>
+            <Text style={styles.sharedCopy}>These settings are saved to the exercise and follow it anywhere it appears in Forge.</Text>
+            <Text style={styles.label}>YOUTUBE TECHNIQUE URL</Text>
+            <TextInput
+              value={exerciseVideo}
+              onChangeText={setExerciseVideo}
+              placeholder="https://www.youtube.com/watch?v=…"
+              placeholderTextColor={colors.faint}
+              autoCapitalize="none"
+              autoCorrect={false}
+              style={styles.modalInput}
+            />
+            <Text style={styles.label}>TECHNIQUE NOTES</Text>
+            <TextInput
+              value={exerciseNotes}
+              onChangeText={setExerciseNotes}
+              placeholder="Your cues, setup notes or reminders"
+              placeholderTextColor={colors.faint}
+              multiline
+              textAlignVertical="top"
+              style={[styles.modalInput, styles.notesInput]}
+            />
+            <PrimaryButton label="Save exercise settings" icon="check" onPress={saveExerciseSettings} />
+            <Pressable onPress={() => setEditingExercise(null)} style={styles.cancel}><Text style={styles.cancelText}>Cancel</Text></Pressable>
+          </View>
+        </View>
+      </Modal>
+
       <Modal visible={customOpen} transparent animationType="fade" onRequestClose={() => setCustomOpen(false)}>
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
@@ -236,7 +314,8 @@ export default function WorkoutTemplateScreen() {
             <TextInput value={customName} onChangeText={setCustomName} placeholder="Exercise name" placeholderTextColor={colors.faint} style={styles.modalInput} />
             <TextInput value={customMuscle} onChangeText={setCustomMuscle} placeholder="Muscle group" placeholderTextColor={colors.faint} style={styles.modalInput} />
             <TextInput value={customEquipment} onChangeText={setCustomEquipment} placeholder="Equipment" placeholderTextColor={colors.faint} style={styles.modalInput} />
-            <TextInput value={customVideo} onChangeText={setCustomVideo} placeholder="Optional YouTube/video URL" placeholderTextColor={colors.faint} autoCapitalize="none" style={styles.modalInput} />
+            <TextInput value={customVideo} onChangeText={setCustomVideo} placeholder="Optional YouTube/video URL" placeholderTextColor={colors.faint} autoCapitalize="none" autoCorrect={false} style={styles.modalInput} />
+            <TextInput value={customNotes} onChangeText={setCustomNotes} placeholder="Optional technique notes" placeholderTextColor={colors.faint} multiline textAlignVertical="top" style={[styles.modalInput, styles.notesInput]} />
             <PrimaryButton label="Create and add" icon="plus" onPress={addCustomExercise} />
             <Pressable onPress={() => setCustomOpen(false)} style={styles.cancel}><Text style={styles.cancelText}>Cancel</Text></Pressable>
           </View>
@@ -258,19 +337,23 @@ const styles = StyleSheet.create({
   label: { color: colors.faint, fontSize: 8, fontWeight: '900', letterSpacing: 0.9 },
   input: { minHeight: 48, borderRadius: radii.md, backgroundColor: colors.surface3, borderWidth: 1, borderColor: colors.border, color: colors.text, fontSize: 14, fontWeight: '800', paddingHorizontal: 14 },
   exerciseList: { borderRadius: radii.lg, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border, overflow: 'hidden' },
-  exerciseRow: { minHeight: 96, paddingHorizontal: 14, paddingVertical: 14, backgroundColor: colors.surface, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  exerciseRow: { minHeight: 96, paddingHorizontal: 10, paddingVertical: 10, backgroundColor: colors.surface, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border, flexDirection: 'row', alignItems: 'center', gap: 6 },
+  exerciseMain: { flex: 1, minHeight: 76, paddingHorizontal: 4, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  exerciseTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
   index: { height: 36, width: 36, borderRadius: 18, backgroundColor: colors.surface3, alignItems: 'center', justifyContent: 'center' },
   indexText: { color: colors.faint, fontSize: 10, fontWeight: '900' },
-  exerciseName: { color: colors.text, fontSize: 15, fontWeight: '900' },
+  exerciseName: { color: colors.text, fontSize: 15, fontWeight: '900', flexShrink: 1 },
   exerciseMeta: { color: colors.accent, fontSize: 10, fontWeight: '900', marginTop: 5 },
   exerciseMuscle: { color: colors.muted, fontSize: 10, fontWeight: '700', marginTop: 4 },
-  removeButton: { height: 34, width: 34, alignItems: 'center', justifyContent: 'center' },
+  rowActions: { flexDirection: 'row', alignItems: 'center' },
+  actionButton: { height: 36, width: 36, alignItems: 'center', justifyContent: 'center' },
   search: { minHeight: 50, borderRadius: radii.md, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, color: colors.text, paddingHorizontal: 14, fontSize: 13, fontWeight: '700', marginBottom: 10 },
   libraryList: { gap: 7 },
-  libraryRow: { minHeight: 68, borderRadius: radii.md, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, gap: 11 },
+  libraryRow: { minHeight: 68, borderRadius: radii.md, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, gap: 8 },
   libraryIcon: { height: 38, width: 38, borderRadius: 19, backgroundColor: colors.accentSoft, alignItems: 'center', justifyContent: 'center' },
-  libraryName: { color: colors.text, fontSize: 13, fontWeight: '900' },
+  libraryName: { color: colors.text, fontSize: 13, fontWeight: '900', flexShrink: 1 },
   libraryMeta: { color: colors.muted, fontSize: 9, fontWeight: '700', marginTop: 3 },
+  libraryAction: { minHeight: 42, minWidth: 42, alignItems: 'center', justifyContent: 'center' },
   add: { color: colors.accent, fontSize: 9, fontWeight: '900', letterSpacing: 0.7 },
   added: { color: colors.faint, fontSize: 9, fontWeight: '900', letterSpacing: 0.7 },
   modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.76)', justifyContent: 'flex-end' },
@@ -279,6 +362,8 @@ const styles = StyleSheet.create({
   field: { flex: 1, gap: 6 },
   numberInput: { minHeight: 50, borderRadius: radii.md, backgroundColor: colors.surface3, borderWidth: 1, borderColor: colors.border, color: colors.text, textAlign: 'center', fontSize: 18, fontWeight: '900' },
   modalInput: { minHeight: 52, borderRadius: radii.md, backgroundColor: colors.surface3, borderWidth: 1, borderColor: colors.border, color: colors.text, paddingHorizontal: 14, fontSize: 14, fontWeight: '800' },
+  notesInput: { minHeight: 92, paddingTop: 14 },
+  sharedCopy: { color: colors.muted, fontSize: 11, lineHeight: 17, fontWeight: '600' },
   cancel: { padding: 12, alignItems: 'center' },
   cancelText: { color: colors.muted, fontSize: 13, fontWeight: '800' },
 });
