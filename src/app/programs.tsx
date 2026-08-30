@@ -55,7 +55,10 @@ export default function ProgramsScreen() {
     setNewWorkoutSubtitle('');
     setAddOpen(false);
     await load();
-    router.push(`/workout-template/${id}`);
+    router.push({
+        pathname: '/workout-template/[id]',
+        params: { id: String(id) },
+    })
   };
 
   return (
@@ -102,7 +105,12 @@ export default function ProgramsScreen() {
             {templates.map((template, index) => (
               <Pressable
                 key={template.id}
-                onPress={() => router.push(`/workout-template/${template.id}`)}
+                onPress={() =>
+                  router.push({
+                    pathname: '/workout-template/[id]',
+                    params: { id: String(template.id) },
+                  })
+                }
                 style={({ pressed }) => [styles.templateCard, pressed && { opacity: 0.75 }]}
               >
                 <View style={styles.index}><Text style={styles.indexText}>{String(index + 1).padStart(2, '0')}</Text></View>

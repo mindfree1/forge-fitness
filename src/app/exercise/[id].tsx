@@ -174,9 +174,18 @@ export default function ExerciseScreen() {
       <View style={styles.nav}>
         <Pressable onPress={() => router.back()} style={styles.navButton}><MaterialCommunityIcons name="arrow-left" size={22} color={colors.text} /></Pressable>
         <Text style={styles.navTitle}>Exercise</Text>
-        <Pressable onPress={() => parsedTemplateId && router.push(`/workout-template/${parsedTemplateId}`)} style={styles.navButton}>
-          <MaterialCommunityIcons name="tune-variant" size={20} color={colors.text} />
-        </Pressable>
+        <Pressable
+            onPress={() => {
+              if (parsedTemplateId) {
+                router.push({
+                  pathname: '/workout-template/[id]',
+                  params: { id: String(parsedTemplateId) },
+                });
+              }
+            }}
+            style={styles.navButton}
+          >
+      </Pressable>
       </View>
 
       <Eyebrow>{exercise.muscle}</Eyebrow>

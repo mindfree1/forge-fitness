@@ -143,7 +143,6 @@ export default function WorkoutTemplateScreen() {
   if (!template) {
     return <Screen><View style={styles.nav}><Pressable onPress={() => router.back()} style={styles.navButton}><MaterialCommunityIcons name="arrow-left" size={22} color={colors.text} /></Pressable></View><Title>Loading workout…</Title></Screen>;
   }
-
   return (
     <Screen>
       <View style={styles.nav}>

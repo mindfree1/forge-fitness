@@ -115,7 +115,13 @@ export default function TrainScreen() {
         {template.exercises.length > 0 ? (
           <PrimaryButton label={activeWorkout ? 'Resume session' : 'Begin session'} icon="play" onPress={beginOrResume} />
         ) : (
-          <PrimaryButton label="Add exercises" icon="plus" onPress={() => router.push(`/workout-template/${template.id}`)} />
+          <PrimaryButton
+            label="Add exercises"
+            icon="plus"
+            onPress={() => router.push({
+              pathname: '/workout-template/[id]',
+              params: { id: String(template.id) },
+            })} />
         )}
         {activeWorkout && (
           <Pressable onPress={confirmFinish} style={styles.finishButton}>
@@ -127,10 +133,17 @@ export default function TrainScreen() {
 
       <View style={styles.sectionHead}>
         <SectionTitle>Workout</SectionTitle>
-        <Pressable onPress={() => router.push(`/workout-template/${template.id}`)}><Text style={styles.editMeta}>EDIT</Text></Pressable>
-      </View>
-
-      <View style={styles.list}>
+        <Pressable
+          onPress={() =>
+          router.push({
+              pathname: '/workout-template/[id]',
+              params: { id: String(template.id) },
+            })
+          }
+        >
+  <Text style={styles.editMeta}>EDIT</Text>
+</Pressable>
+    </View><View style={styles.list}>
         {template.exercises.map((exercise, index) => (
           <Pressable key={exercise.templateExerciseId} onPress={() => openExercise(exercise.slug)} style={({ pressed }) => [styles.exercise, pressed && { opacity: 0.75 }]}>
             <View style={styles.index}><Text style={styles.indexText}>{String(index + 1).padStart(2, '0')}</Text></View>
