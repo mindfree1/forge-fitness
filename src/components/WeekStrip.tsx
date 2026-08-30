@@ -3,10 +3,16 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '@/lib/theme';
 import { weekActivity } from '@/lib/seed';
 
-export function WeekStrip() {
+export type WeekActivityItem = {
+  day: string;
+  done: boolean;
+  today?: boolean;
+};
+
+export function WeekStrip({ activity = weekActivity }: { activity?: readonly WeekActivityItem[] }) {
   return (
     <View style={styles.row}>
-      {weekActivity.map((item, index) => (
+      {activity.map((item, index) => (
         <View key={`${item.day}-${index}`} style={styles.item}>
           <Text style={[styles.day, item.today && styles.todayText]}>{item.day}</Text>
           <View style={[styles.dot, item.done && styles.done, item.today && styles.today]}>
