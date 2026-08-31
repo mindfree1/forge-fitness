@@ -9,13 +9,6 @@ export async function resetTrackingData() {
     await db.runAsync('DELETE FROM personal_bests');
     await db.runAsync('DELETE FROM workouts');
     await db.runAsync('DELETE FROM weight_entries');
-
-    await db.runAsync(
-      'INSERT INTO weight_entries (weight_kg, recorded_at) VALUES (?, ?)',
-      0,
-      '1970-01-01T00:00:00.000Z',
-    );
-
     await db.runAsync('UPDATE goals SET current_value = 0, is_completed = 0');
   });
 }

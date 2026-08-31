@@ -180,15 +180,6 @@ export async function initialiseDatabase() {
     }
   }
 
-  const weightCount = await db.getFirstAsync<{ count: number }>('SELECT COUNT(*) AS count FROM weight_entries');
-  if (!weightCount?.count) {
-    const values = [73.8, 73.5, 73.6, 73.2, 73.0, 72.9, 72.8];
-    const dates = ['2026-07-13', '2026-07-20', '2026-07-27', '2026-08-03', '2026-08-10', '2026-08-17', '2026-08-24'];
-    for (let i = 0; i < values.length; i += 1) {
-      await db.runAsync('INSERT INTO weight_entries (weight_kg, recorded_at) VALUES (?, ?)', values[i], dates[i]);
-    }
-  }
-
   const goalCount = await db.getFirstAsync<{ count: number }>('SELECT COUNT(*) AS count FROM goals');
   if (!goalCount?.count) {
     const goals = [
