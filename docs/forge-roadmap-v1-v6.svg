@@ -1,0 +1,98 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1420" viewBox="0 0 1800 1420">
+  <rect width="1800" height="1420" fill="#070b10"/>
+  <style>
+    .title{font:700 62px Arial,sans-serif;fill:#f4f7fb}.sub{font:400 27px Arial,sans-serif;fill:#aeb8c6}.h{font:700 28px Arial,sans-serif;fill:#f4f7fb}.v{font:700 48px Arial,sans-serif}.small{font:400 21px Arial,sans-serif;fill:#aeb8c6}.body{font:400 22px Arial,sans-serif;fill:#f4f7fb}.bold{font:700 22px Arial,sans-serif;fill:#f4f7fb}.label{font:700 18px Arial,sans-serif;letter-spacing:1px}.date{font:700 21px Arial,sans-serif}.muted{fill:#aeb8c6}.white{fill:#f4f7fb}
+  </style>
+
+  <g transform="translate(45 38)">
+    <path d="M0 6h38L27 24h24L5 70l12-32H0z" fill="#ff5a36"/>
+    <text x="62" y="47" class="h" font-size="42">FORGE</text>
+  </g>
+  <text x="60" y="145" class="title">Forge Roadmap &amp; Milestones</text>
+  <text x="60" y="192" class="sub">Local-first • open source • zero cost • personal use first</text>
+  <rect x="1325" y="52" rx="25" width="415" height="55" fill="#0a1017" stroke="#f4b942" stroke-width="2"/>
+  <text x="1532" y="87" text-anchor="middle" class="label" fill="#f4b942">TARGET: V6 BY 4 OCT 2026</text>
+
+  <rect x="60" y="225" rx="18" width="1680" height="108" fill="#0a1118" stroke="#263342" stroke-width="2"/>
+  <text x="86" y="260" class="label" fill="#ff5a36">SCOPE GUARDRAILS</text>
+  <g class="label" text-anchor="middle">
+    <rect x="330" y="242" rx="19" width="180" height="42" fill="#0a1017" stroke="#57d67a"/><text x="420" y="269" fill="#57d67a">LOCAL ONLY</text>
+    <rect x="530" y="242" rx="19" width="190" height="42" fill="#0a1017" stroke="#57d67a"/><text x="625" y="269" fill="#57d67a">NO ACCOUNTS</text>
+    <rect x="740" y="242" rx="19" width="170" height="42" fill="#0a1017" stroke="#57d67a"/><text x="825" y="269" fill="#57d67a">NO CLOUD</text>
+    <rect x="930" y="242" rx="19" width="225" height="42" fill="#0a1017" stroke="#57d67a"/><text x="1042" y="269" fill="#57d67a">NO SUBSCRIPTIONS</text>
+    <rect x="1175" y="242" rx="19" width="190" height="42" fill="#0a1017" stroke="#41a9ff"/><text x="1270" y="269" fill="#41a9ff">REAL GYM QA</text>
+    <rect x="1385" y="242" rx="19" width="190" height="42" fill="#0a1017" stroke="#41a9ff"/><text x="1480" y="269" fill="#41a9ff">PERSONAL USE</text>
+  </g>
+  <text x="86" y="312" class="small">Rule: features move forward only when real workouts prove the previous layer useful.</text>
+
+  <!-- V1 -->
+  <g transform="translate(60 365)">
+    <rect width="530" height="410" rx="22" fill="#0d141d" stroke="#263342" stroke-width="2"/><rect width="530" height="10" rx="6" fill="#ff5a36"/>
+    <text x="28" y="63" class="v" fill="#ff5a36">V1</text><text x="108" y="56" class="h">FOUNDATION</text>
+    <rect x="355" y="26" width="145" height="42" rx="20" fill="#0a1017" stroke="#ff5a36"/><text x="427" y="53" text-anchor="middle" class="label" fill="#ff5a36">DONE</text>
+    <text x="28" y="97" class="date" fill="#ff5a36">30 AUG 2026</text>
+    <text x="28" y="137" class="bold">Make logging usable in a real workout.</text>
+    <text x="30" y="185" class="body">• Today / Train / Progress / Goals shell</text><text x="30" y="220" class="body">• Weight + rep entry</text><text x="30" y="255" class="body">• Initial exercise set</text><text x="30" y="290" class="body">• Local SQLite foundation</text>
+    <line x1="28" y1="330" x2="502" y2="330" stroke="#263342"/><text x="28" y="360" class="label" fill="#ff5a36">MILESTONE</text><text x="28" y="392" class="small">A complete workout can be logged quickly.</text>
+  </g>
+
+  <!-- V2 -->
+  <g transform="translate(635 365)">
+    <rect width="530" height="410" rx="22" fill="#0d141d" stroke="#263342" stroke-width="2"/><rect width="530" height="10" rx="6" fill="#41a9ff"/>
+    <text x="28" y="63" class="v" fill="#41a9ff">V2</text><text x="108" y="56" class="h">PERSISTENCE</text>
+    <rect x="355" y="26" width="145" height="42" rx="20" fill="#0a1017" stroke="#41a9ff"/><text x="427" y="53" text-anchor="middle" class="label" fill="#41a9ff">DONE</text>
+    <text x="28" y="97" class="date" fill="#41a9ff">30 AUG 2026</text>
+    <text x="28" y="137" class="bold">Remember what happened between sessions.</text>
+    <text x="30" y="185" class="body">• Persist workouts + sets</text><text x="30" y="220" class="body">• Resume unfinished sessions</text><text x="30" y="255" class="body">• PB detection + rest timer</text><text x="30" y="290" class="body">• History survives app restarts</text>
+    <line x1="28" y1="330" x2="502" y2="330" stroke="#263342"/><text x="28" y="360" class="label" fill="#41a9ff">MILESTONE</text><text x="28" y="392" class="small">No more remembering last session yourself.</text>
+  </g>
+
+  <!-- V3 -->
+  <g transform="translate(1210 365)">
+    <rect width="530" height="410" rx="22" fill="#0d141d" stroke="#263342" stroke-width="2"/><rect width="530" height="10" rx="6" fill="#4fd1c5"/>
+    <text x="28" y="63" class="v" fill="#4fd1c5">V3</text><text x="108" y="56" class="h">PROGRAMS + MEDIA</text>
+    <rect x="355" y="26" width="145" height="42" rx="20" fill="#0a1017" stroke="#4fd1c5"/><text x="427" y="53" text-anchor="middle" class="label" fill="#4fd1c5">QA NOW</text>
+    <text x="28" y="97" class="date" fill="#4fd1c5">1–3 SEP</text>
+    <text x="28" y="137" class="bold">Turn Forge into the thing you actually train from.</text>
+    <text x="30" y="185" class="body">• Editable workout rotation</text><text x="30" y="220" class="body">• Exercise library + custom exercises</text><text x="30" y="255" class="body">• YouTube technique videos</text><text x="30" y="290" class="body">• Previous-set context + real Today/Train flow</text>
+    <line x1="28" y1="330" x2="502" y2="330" stroke="#263342"/><text x="28" y="360" class="label" fill="#4fd1c5">MILESTONE</text><text x="28" y="392" class="small">Session 1: zero-friction logging + persistence.</text>
+  </g>
+
+  <!-- V4 -->
+  <g transform="translate(60 810)">
+    <rect width="530" height="430" rx="22" fill="#0d141d" stroke="#263342" stroke-width="2"/><rect width="530" height="10" rx="6" fill="#a87cff"/>
+    <text x="28" y="63" class="v" fill="#a87cff">V4</text><text x="108" y="56" class="h">PROGRESS ANALYTICS</text>
+    <rect x="335" y="26" width="165" height="42" rx="20" fill="#0a1017" stroke="#a87cff"/><text x="417" y="53" text-anchor="middle" class="label" fill="#a87cff">IN PROGRESS</text>
+    <text x="28" y="97" class="date" fill="#a87cff">3–6 SEP</text>
+    <text x="28" y="137" class="bold">Show whether the training is working.</text>
+    <text x="30" y="185" class="body">• 7D / 30D / 12W / 1Y ranges</text><text x="30" y="220" class="body">• e1RM / max weight / volume</text><text x="30" y="255" class="body">• Consistency + bodyweight trends</text><text x="30" y="290" class="body">• PB history + deltas</text><text x="30" y="325" class="body">• Muscle-balance volume</text>
+    <line x1="28" y1="350" x2="502" y2="350" stroke="#263342"/><text x="28" y="380" class="label" fill="#a87cff">MILESTONE</text><text x="28" y="412" class="small">Sessions 2–3 produce correct, useful graphs.</text>
+  </g>
+
+  <!-- V5 -->
+  <g transform="translate(635 810)">
+    <rect width="530" height="430" rx="22" fill="#0d141d" stroke="#263342" stroke-width="2"/><rect width="530" height="10" rx="6" fill="#57d67a"/>
+    <text x="28" y="63" class="v" fill="#57d67a">V5</text><text x="108" y="56" class="h">TRAINING GUIDANCE</text>
+    <rect x="355" y="26" width="145" height="42" rx="20" fill="#0a1017" stroke="#57d67a"/><text x="427" y="53" text-anchor="middle" class="label" fill="#57d67a">PLANNED</text>
+    <text x="28" y="97" class="date" fill="#57d67a">7–18 SEP</text>
+    <text x="28" y="137" class="bold">Answer: what weight / reps should I do next?</text>
+    <text x="30" y="185" class="body">• Strength / Muscle / Balanced modes</text><text x="30" y="220" class="body">• Easy / Good / Hard / Max effort</text><text x="30" y="255" class="body">• RIR under the hood</text><text x="30" y="290" class="body">• Progressive-overload engine</text><text x="30" y="325" class="body">• Increase / repeat / build reps / reduce</text>
+    <line x1="28" y1="350" x2="502" y2="350" stroke="#263342"/><text x="28" y="380" class="label" fill="#57d67a">MILESTONE</text><text x="28" y="412" class="small">3–5 repeated sessions → advice feels trustworthy.</text>
+  </g>
+
+  <!-- V6 -->
+  <g transform="translate(1210 810)">
+    <rect width="530" height="430" rx="22" fill="#0d141d" stroke="#263342" stroke-width="2"/><rect width="530" height="10" rx="6" fill="#f4b942"/>
+    <text x="28" y="63" class="v" fill="#f4b942">V6</text><text x="108" y="56" class="h">GOAL-AWARE PERSONAL</text>
+    <rect x="355" y="26" width="145" height="42" rx="20" fill="#0a1017" stroke="#f4b942"/><text x="427" y="53" text-anchor="middle" class="label" fill="#f4b942">PLANNED</text>
+    <text x="28" y="97" class="date" fill="#f4b942">19 SEP – 4 OCT</text>
+    <text x="28" y="137" class="bold">Connect goals, body changes and program decisions.</text>
+    <text x="30" y="185" class="body">• Recurring body / weight check-ins</text><text x="30" y="220" class="body">• BMI + estimated body-fat trends</text><text x="30" y="255" class="body">• Goal + muscle/movement coverage analysis</text><text x="30" y="290" class="body">• Relevant exercise recommendations only</text><text x="30" y="325" class="body">• One-tap add-to-rotation + simple nutrition guidance</text>
+    <line x1="28" y1="350" x2="502" y2="350" stroke="#263342"/><text x="28" y="380" class="label" fill="#f4b942">MILESTONE</text><text x="28" y="412" class="small">Forge explains what changed and what to do next.</text>
+  </g>
+
+  <rect x="60" y="1275" rx="18" width="1680" height="100" fill="#0a1118" stroke="#263342" stroke-width="2"/>
+  <text x="86" y="1310" class="label" fill="#ff5a36">LATER — DELIBERATELY VAGUE</text>
+  <text x="86" y="1348" class="small">Recovery/wellness correlations • deeper nutrition • Health Connect expansion • periodisation • export/backup • Gym Scan / machine capture (V12+)</text>
+  <text x="60" y="1405" class="small">Target windows are guides, not deadlines. If gym QA exposes friction, the version slips rather than shipping unproven.</text>
+</svg>
