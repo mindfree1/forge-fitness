@@ -1,5 +1,6 @@
 import { createContext, PropsWithChildren, useContext, useEffect, useMemo, useState } from 'react';
 import { addWeight as persistWeight, getGoals, getWeights, initialiseDatabase, toggleGoal as persistGoal } from '@/lib/db';
+import { createGoal as persistCreateGoal, deleteGoal as persistDeleteGoal, updateGoal as persistUpdateGoal, type GoalInput } from '@/lib/goals';
 import { resetTrackingData } from '@/lib/reset';
 import type { Goal, WeightEntry } from '@/lib/types';
 
@@ -10,6 +11,9 @@ type FitnessContextValue = {
   latestWeight?: WeightEntry;
   addWeight: (value: number) => Promise<void>;
   toggleGoal: (id: number, completed: boolean) => Promise<void>;
+  createGoal: (input: GoalInput) => Promise<void>;
+  updateGoal: (id: number, input: GoalInput) => Promise<void>;
+  deleteGoal: (id: number) => Promise<void>;
   resetTracking: () => Promise<void>;
 };
 
@@ -43,6 +47,18 @@ export function FitnessProvider({ children }: PropsWithChildren) {
     },
     toggleGoal: async (id, completed) => {
       await persistGoal(id, completed);
+      await refresh();
+    },
+    createGoal: async (input) => {
+      await persistCreateGoal(input);
+      await refresh();
+    },
+    updateGoal: async (id, input) => {
+      await persistUpdateGoal(id, input);
+      await refresh();
+    },
+    deleteGoal: async (id) => {
+      await persistDeleteGoal(id);
       await refresh();
     },
     resetTracking: async () => {
