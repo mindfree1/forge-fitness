@@ -169,6 +169,8 @@ export default function ExerciseScreen() {
   const pbHeadline = weightPb ? `${formatNumber(weightPb.value)} kg max set` : 'Set your baseline';
   const pbSubline = e1rmPb ? `Estimated 1RM ${formatNumber(e1rmPb.value)} kg` : 'Complete a working set to start PB tracking';
   const targetLabel = `${exercise.targetSets} × ${exercise.minReps}${exercise.minReps !== exercise.maxReps ? `–${exercise.maxReps}` : ''}`;
+  const isFirstSetEntry = previous.every((row) => row.weightKg == null && row.reps == null)
+    && sets.every((row) => !row.kg.trim() && !row.reps.trim());
 
   return (
     <Screen>
@@ -233,24 +235,31 @@ export default function ExerciseScreen() {
         <Text style={[styles.columnHead, { width: 64, textAlign: 'center' }]}>REPS</Text>
         <View style={{ width: 42 }} />
       </View>
+      {isFirstSetEntry ? <Text style={styles.setHint}>Tap the green + under KG and REPS to enter your first set.</Text> : null}
       <View style={styles.setList}>
         {sets.map((set, index) => (
           <View key={index} style={[styles.setRow, set.complete && styles.setComplete]}>
             <Text style={styles.setNumber}>{index + 1}</Text>
             <Text style={styles.previous}>{previousLabel(previous[index])}</Text>
             <TextInput
+              accessibilityLabel={`Weight in kilograms for set ${index + 1}`}
               value={set.kg}
               onChangeText={(value) => updateSet(index, 'kg', value)}
               onEndEditing={() => persistSet(index, sets[index]).catch(() => undefined)}
               keyboardType="decimal-pad"
+              placeholder="+"
+              placeholderTextColor={colors.accent}
               style={styles.setInput}
               selectTextOnFocus
             />
             <TextInput
+              accessibilityLabel={`Repetitions for set ${index + 1}`}
               value={set.reps}
               onChangeText={(value) => updateSet(index, 'reps', value)}
               onEndEditing={() => persistSet(index, sets[index]).catch(() => undefined)}
               keyboardType="number-pad"
+              placeholder="+"
+              placeholderTextColor={colors.accent}
               style={styles.repInput}
               selectTextOnFocus
             />
@@ -311,6 +320,7 @@ const styles = StyleSheet.create({
   rest: { color: colors.accent, fontSize: 9, fontWeight: '900', letterSpacing: 0.8 },
   tableHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, marginBottom: 7 },
   columnHead: { color: colors.faint, fontSize: 8, fontWeight: '900', letterSpacing: 0.8 },
+  setHint: { color: colors.muted, fontSize: 10, fontWeight: '700', lineHeight: 15, marginBottom: 9, paddingHorizontal: 10 },
   setList: { gap: 7 },
   setRow: { minHeight: 58, borderRadius: radii.md, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10 },
   setComplete: { borderColor: '#344324', backgroundColor: '#141A10' },

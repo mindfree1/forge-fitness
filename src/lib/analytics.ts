@@ -165,7 +165,7 @@ export async function getTrainingConsistency(range: ProgressRange): Promise<Trai
       const key = localMonthKey(cursor);
       buckets.push({
         key,
-        label: shortMonth(cursor),
+        label: localMonthKey(cursor) === localMonthKey(window.end) ? 'This month' : shortMonth(cursor),
         value: completedDates.filter((item) => localMonthKey(item) === key).length,
       });
       cursor.setMonth(cursor.getMonth() + 1);
@@ -174,17 +174,30 @@ export async function getTrainingConsistency(range: ProgressRange): Promise<Trai
     const bucketCount = range === '12W' ? 12 : Math.ceil(window.days / 7);
     for (let i = 0; i < bucketCount; i += 1) {
       const bucketStart = addDays(window.start, i * 7);
-      const bucketEnd = addDays(bucketStart, 7);
-      const value = completedDates.filter((date) => date >= bucketStart && date < bucketEnd && date <= window.end).length;
-      buckets.push({ key: localDayKey(bucketStart), label: shortDate(bucketStart), value });
+      const bucketEndExclusive = addDays(bucketStart, 7);
+      const bucketEnd = bucketEndExclusive > window.end ? window.end : addDays(bucketEndExclusive, -1);
+      const value = completedDates.filter((date) => date >= bucketStart && date < bucketEndExclusive && date <= window.end).length;
+      const isCurrentBucket = window.end >= bucketStart && window.end < bucketEndExclusive;
+      const label = isCurrentBucket
+        ? 'This week'
+        : `${shortDate(bucketStart)}–${shortDate(bucketEnd)}`;
+      buckets.push({ key: localDayKey(bucketStart), label, value });
     }
   }
 
   const totalSessions = rows.length;
+  if (!totalSessions) return { buckets, totalSessions: 0, sessionsPerWeek: 0 };
+
+  const firstCompleted = startOfLocalDay(completedDates[0]);
+  const lastDay = startOfLocalDay(window.end);
+  const activeDays = Math.max(1, Math.floor((lastDay.getTime() - firstCompleted.getTime()) / 86_400_000) + 1);
+  const denominatorDays = Math.max(7, Math.min(window.days, activeDays));
+  const sessionsPerWeek = Math.round((totalSessions / (denominatorDays / 7)) * 10) / 10;
+
   return {
     buckets,
     totalSessions,
-    sessionsPerWeek: Math.round((totalSessions / (window.days / 7)) * 10) / 10,
+    sessionsPerWeek,
   };
 }
 

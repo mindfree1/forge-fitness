@@ -80,6 +80,11 @@ export default function TodayScreen() {
   const targetSessions = program?.targetSessionsPerWeek ?? 4;
   const dayName = new Date().toLocaleDateString('en-AU', { weekday: 'long' });
 
+  const openWeight = () => {
+    setWeight(latestWeight?.weightKg.toFixed(1) ?? '');
+    setWeightOpen(true);
+  };
+
   return (
     <Screen>
       <View style={styles.topRow}>
@@ -91,22 +96,28 @@ export default function TodayScreen() {
       </View>
 
       <View style={styles.metricRow}>
-        <MetricTile
-          label="Body weight"
-          value={currentWeight == null ? '—' : currentWeight.toFixed(1)}
-          suffix={currentWeight == null ? undefined : 'kg'}
-          detail={weightDelta == null ? 'No weigh-ins yet' : `${weightDelta >= 0 ? '+' : ''}${weightDelta.toFixed(1)} kg from start`}
-        />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Log body weight"
+          onPress={openWeight}
+          style={({ pressed }) => [styles.metricPressable, pressed && styles.metricPressed]}
+        >
+          <MetricTile
+            label="Body weight"
+            value={currentWeight == null ? '—' : currentWeight.toFixed(1)}
+            suffix={currentWeight == null ? undefined : 'kg'}
+            detail={weightDelta == null ? 'Tap to add your first weigh-in' : `${weightDelta >= 0 ? '+' : ''}${weightDelta.toFixed(1)} kg from start`}
+          />
+          {currentWeight == null ? (
+            <View style={styles.metricAddBadge}>
+              <MaterialCommunityIcons name="plus" size={19} color={colors.bg} />
+            </View>
+          ) : null}
+        </Pressable>
         <MetricTile label="Today steps" value="—" detail="Health Connect not connected" accent />
       </View>
 
-      <Pressable
-        onPress={() => {
-          setWeight(latestWeight?.weightKg.toFixed(1) ?? '');
-          setWeightOpen(true);
-        }}
-        style={styles.quickAction}
-      >
+      <Pressable onPress={openWeight} style={styles.quickAction}>
         <MaterialCommunityIcons name="plus-circle-outline" size={19} color={colors.accent} />
         <Text style={styles.quickText}>Log today's weight</Text>
         <MaterialCommunityIcons name="chevron-right" size={20} color={colors.faint} />
@@ -206,6 +217,9 @@ const styles = StyleSheet.create({
   topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 10, marginBottom: 26 },
   avatar: { width: 42, height: 42, borderRadius: 21, backgroundColor: colors.surface2, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
   metricRow: { flexDirection: 'row', gap: 10 },
+  metricPressable: { flex: 1, position: 'relative' },
+  metricPressed: { opacity: 0.82 },
+  metricAddBadge: { position: 'absolute', top: 13, right: 13, width: 32, height: 32, borderRadius: 16, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center' },
   quickAction: { height: 52, marginTop: 10, borderRadius: radii.md, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 15 },
   quickText: { flex: 1, color: colors.text, fontSize: 13, fontWeight: '800' },
   sectionHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 30, marginBottom: 12 },
