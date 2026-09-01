@@ -34,12 +34,12 @@ The roadmap is intentionally **milestone-led rather than deadline-led**. Target 
 
 | Version | Focus | Status / target | Real-world gate |
 | --- | --- | --- | --- |
-| **V1 — Foundation** | Fast workout logging and local data foundation | ✅ Completed 30 Aug 2026 | A complete workout can be logged quickly. |
-| **V2 — Persistence** | Persisted workout sessions, sets, PBs, resume flow and rest timer | ✅ Merged 30 Aug 2026 | Forge remembers the session so the user does not have to. |
-| **V3 — Programs + Media** | Editable rotation, broader exercise library, previous-set context and YouTube technique media | 🧪 QA target 1–3 Sep | Session 1 proves logging, persistence, rotation and exercise media are low-friction in the gym. |
-| **V4 — Progress Analytics** | Real graphs and insights: consistency, e1RM, max weight, volume, bodyweight, PB deltas and muscle balance | 🧪 Target 3–6 Sep | Sessions 2–3 produce correct numbers and graphs that are actually useful. |
-| **V5 — Training Guidance** | Strength/Muscle/Balanced focus, simple RIR capture and conservative progressive-overload recommendations | 🎯 Target 7–18 Sep | 3–5 repeated exercise sessions produce recommendations that feel sensible, explainable and safe to override. |
-| **V6 — Goal-aware Personalisation** | Recurring progress check-ins, body-composition trends, goal/muscle coverage analysis, relevant exercise recommendations and one-tap program updates | 🎯 Target 19 Sep–4 Oct | Forge can explain what changed, what it means, and what to do next toward the current physique/performance goal. |
+| **V1 — Foundation** | Fast workout logging and local data foundation | ✅ Completed **Sunday 30 Aug 2026** | A complete workout can be logged quickly. |
+| **V2 — Persistence** | Persisted workout sessions, sets, PBs, resume flow and rest timer | ✅ Merged **Sunday 30 Aug 2026** | Forge remembers the session so the user does not have to. |
+| **V3 — Programs + Media** | Editable rotation, broader exercise library, previous-set context and YouTube technique media | 🧪 QA window **30 Aug–3 Sep 2026** | Session 1 proves logging, persistence, rotation and exercise media are low-friction in the gym. |
+| **V4 — Progress Analytics** | Real graphs and insights: consistency, e1RM, max weight, volume, bodyweight, PB deltas and muscle balance | 🧪 Target **31 Aug–7 Sep 2026** | Sessions 2–3 produce correct numbers and graphs that are actually useful. |
+| **V5 — Training Guidance** | Strength/Muscle/Balanced focus, simple RIR capture and conservative progressive-overload recommendations | 🎯 Target **8–20 Sep 2026** | 3–5 repeated exercise sessions produce recommendations that feel sensible, explainable and safe to override. |
+| **V6 — Goal-aware Personalisation** | Recurring progress check-ins, body-composition trends, goal/muscle coverage analysis, relevant exercise recommendations and one-tap program updates | 🎯 Target **21 Sep–11 Oct 2026** | Forge can explain what changed, what it means, and what to do next toward the current physique/performance goal. |
 
 ### Immediate QA sequence
 
