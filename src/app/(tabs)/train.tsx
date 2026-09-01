@@ -15,6 +15,7 @@ import {
   getWorkoutTemplate,
   startWorkout,
 } from '@/lib/db';
+import { getExerciseTrackingMode, isTimedTrackingMode } from '@/lib/exerciseTracking';
 import {
   addExerciseToWorkout,
   getWorkoutCompletionSummary,
@@ -35,11 +36,11 @@ function formatSessionTime(seconds: number) {
   return `${hours ? `${String(hours).padStart(2, '0')}:` : ''}${String(minutes).padStart(2, '0')}:${String(remainder).padStart(2, '0')}`;
 }
 
-function formatCardioProgress(progress?: WorkoutExerciseProgress) {
-  if (!progress?.cardioComplete) return 'Cardio · tap to start';
+function formatTimedProgress(progress: WorkoutExerciseProgress | undefined, cardio: boolean) {
+  if (!progress?.cardioComplete) return cardio ? 'Cardio · tap to start' : 'Timed hold · tap to start';
   const bits: string[] = [];
   if (progress.cardioDurationSeconds) bits.push(formatSessionTime(progress.cardioDurationSeconds));
-  if (progress.cardioDistanceKm != null) bits.push(`${progress.cardioDistanceKm.toFixed(2)} km`);
+  if (cardio && progress.cardioDistanceKm != null) bits.push(`${progress.cardioDistanceKm.toFixed(2)} km`);
   return bits.length ? bits.join(' · ') : 'Complete';
 }
 
@@ -111,8 +112,8 @@ export default function TrainScreen() {
 
   const completedCount = useMemo(() => sessionExercises.filter((exercise) => {
     const item = progressMap.get(exercise.slug);
-    const cardio = exercise.muscle.toLowerCase().includes('cardio');
-    return cardio ? Boolean(item?.cardioComplete) : (item?.completedSets ?? 0) >= exercise.targetSets;
+    const mode = getExerciseTrackingMode(exercise);
+    return isTimedTrackingMode(mode) ? Boolean(item?.cardioComplete) : (item?.completedSets ?? 0) >= exercise.targetSets;
   }).length, [progressMap, sessionExercises]);
 
   const filteredLibrary = useMemo(() => {
@@ -243,8 +244,11 @@ export default function TrainScreen() {
       <View style={styles.list}>
         {sessionExercises.map((exercise, index) => {
           const item = progressMap.get(exercise.slug);
-          const cardio = exercise.muscle.toLowerCase().includes('cardio');
-          const done = cardio ? Boolean(item?.cardioComplete) : (item?.completedSets ?? 0) >= exercise.targetSets;
+          const mode = getExerciseTrackingMode(exercise);
+          const timed = isTimedTrackingMode(mode);
+          const cardio = mode === 'cardio';
+          const bodyweightReps = mode === 'bodyweight-reps';
+          const done = timed ? Boolean(item?.cardioComplete) : (item?.completedSets ?? 0) >= exercise.targetSets;
           return (
             <View key={`${exercise.id}:${index}`} style={[styles.exercise, done && styles.exerciseDone]}>
               <Pressable onPress={() => openExercise(exercise)} style={styles.exerciseOpen}>
@@ -254,11 +258,13 @@ export default function TrainScreen() {
                 <View style={styles.exerciseBody}>
                   <Text style={styles.exerciseName}>{exercise.name}</Text>
                   <Text style={styles.exerciseMeta}>
-                    {cardio
-                      ? formatCardioProgress(item)
-                      : `${item?.completedSets ?? 0}/${exercise.targetSets} sets · ${exercise.targetSets} × ${exercise.minReps}${exercise.minReps !== exercise.maxReps ? `–${exercise.maxReps}` : ''} · ${exercise.muscle}`}
+                    {timed
+                      ? formatTimedProgress(item, cardio)
+                      : bodyweightReps
+                        ? `${item?.completedSets ?? 0}/${exercise.targetSets} sets · ${exercise.targetSets} × ${exercise.minReps}${exercise.minReps !== exercise.maxReps ? `–${exercise.maxReps}` : ''} reps · Bodyweight`
+                        : `${item?.completedSets ?? 0}/${exercise.targetSets} sets · ${exercise.targetSets} × ${exercise.minReps}${exercise.minReps !== exercise.maxReps ? `–${exercise.maxReps}` : ''} · ${exercise.muscle}`}
                   </Text>
-                  {!cardio && !done ? (
+                  {!timed && !done ? (
                     <View style={styles.previousRow}>
                       <Text style={styles.previousLabel}>REST</Text>
                       <Text style={styles.previousValue}>{exercise.restSeconds}s</Text>
@@ -302,7 +308,7 @@ export default function TrainScreen() {
             <TextInput
               value={pickerQuery}
               onChangeText={setPickerQuery}
-              placeholder="Search rowing, cardio, chest…"
+              placeholder="Search treadmill, bike, pull-up…"
               placeholderTextColor={colors.faint}
               style={styles.searchInput}
             />
