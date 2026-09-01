@@ -77,14 +77,18 @@ async function exerciseIdForSlug(slug: string) {
   return row.id;
 }
 
-export async function saveTimedWorkoutSet(set: WorkoutSet): Promise<PersonalBest['metric'][]> {
+export async function saveTimedWorkoutSet(
+  set: WorkoutSet,
+  options: { repsOnly?: boolean } = {},
+): Promise<PersonalBest['metric'][]> {
   await ensureGymFlowSchema();
   const achieved = await saveWorkoutSet(set);
   const db = await database();
   const exerciseId = await exerciseIdForSlug(set.exerciseSlug);
   const now = new Date().toISOString();
+  const intentReady = set.reps != null && (options.repsOnly || set.weightKg != null);
 
-  if (set.weightKg != null && set.reps != null) {
+  if (intentReady) {
     await db.runAsync(
       `UPDATE workout_sets
        SET intent_started_at = COALESCE(intent_started_at, ?)
@@ -105,6 +109,27 @@ export async function saveTimedWorkoutSet(set: WorkoutSet): Promise<PersonalBest
     exerciseId,
     set.setNumber,
   );
+
+  if (options.repsOnly && set.completed && set.reps != null && set.reps > 0) {
+    const current = await db.getFirstAsync<{ value: number }>(
+      `SELECT value
+       FROM personal_bests
+       WHERE exercise_id = ? AND metric = 'reps'
+       ORDER BY value DESC
+       LIMIT 1`,
+      exerciseId,
+    );
+    if (!current || set.reps > current.value) {
+      await db.runAsync(
+        `INSERT INTO personal_bests (exercise_id, metric, value, achieved_at)
+         VALUES (?, 'reps', ?, ?)`,
+        exerciseId,
+        set.reps,
+        now,
+      );
+      if (!achieved.includes('reps')) achieved.push('reps');
+    }
+  }
 
   return achieved;
 }
