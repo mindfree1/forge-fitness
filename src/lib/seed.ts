@@ -18,9 +18,16 @@ export const exerciseLibrarySeed = [
   { slug: 'seated-leg-curl', name: 'Seated Leg Curl', muscle: 'Hamstrings', equipment: 'Machine', techniqueNotes: 'Keep hips down and control the eccentric all the way out.' },
   { slug: 'standing-calf-raise', name: 'Standing Calf Raise', muscle: 'Calves', equipment: 'Machine', techniqueNotes: 'Pause in the stretched position and finish each rep tall.' },
   { slug: 'pull-up', name: 'Pull-Up', muscle: 'Lats', equipment: 'Bodyweight', techniqueNotes: 'Start from a controlled hang and drive the elbows down rather than reaching with the chin.' },
+  { slug: 'push-up', name: 'Push-Up', muscle: 'Chest', equipment: 'Bodyweight', techniqueNotes: 'Keep the body rigid, lower under control, and finish each rep without losing shoulder position.' },
+  { slug: 'sit-up', name: 'Sit-Up', muscle: 'Core', equipment: 'Bodyweight', techniqueNotes: 'Move smoothly through a comfortable range and avoid pulling on the neck.' },
   { slug: 'face-pull', name: 'Face Pull', muscle: 'Rear delts', equipment: 'Cable', techniqueNotes: 'Pull toward eye level and rotate the hands apart at the finish.' },
   { slug: 'cable-fly', name: 'Cable Fly', muscle: 'Chest', equipment: 'Cable', techniqueNotes: 'Keep a soft elbow and bring the upper arms across the chest without losing shoulder position.' },
   { slug: 'plank', name: 'Plank', muscle: 'Core', equipment: 'Bodyweight', techniqueNotes: 'Squeeze glutes and ribs down so the trunk stays rigid.' },
+  { slug: 'cardio-rowing-machine', name: 'Rowing Machine', muscle: 'Cardio', equipment: 'Rower', techniqueNotes: 'Use a smooth leg-drive, body-swing, arm-pull sequence and keep the return controlled.' },
+  { slug: 'cardio-treadmill', name: 'Treadmill', muscle: 'Cardio', equipment: 'Treadmill', techniqueNotes: 'Choose a sustainable pace and use incline or speed gradually rather than making abrupt jumps.' },
+  { slug: 'cardio-stationary-bike', name: 'Stationary Bike', muscle: 'Cardio', equipment: 'Exercise bike', techniqueNotes: 'Set the seat so the knee stays slightly bent at the bottom of the pedal stroke and keep cadence smooth.' },
+  { slug: 'cardio-elliptical', name: 'Elliptical', muscle: 'Cardio', equipment: 'Elliptical', techniqueNotes: 'Keep posture tall and use a smooth repeatable stride at a sustainable resistance.' },
+  { slug: 'cardio-stair-climber', name: 'Stair Climber', muscle: 'Cardio', equipment: 'Stair climber', techniqueNotes: 'Stand tall, use the rails lightly for balance, and choose a pace you can control.' },
 ] as const;
 
 export const defaultProgramSeed = {
