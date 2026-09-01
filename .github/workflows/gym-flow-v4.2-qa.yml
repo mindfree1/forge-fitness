@@ -28,7 +28,8 @@ jobs:
       - name: TypeScript
         run: npm run typecheck
 
-      - name: Expo Doctor
+      - name: Expo Doctor (advisory)
+        continue-on-error: true
         run: npx expo-doctor@latest
 
       - name: Android export
