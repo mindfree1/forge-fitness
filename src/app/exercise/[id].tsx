@@ -16,6 +16,7 @@ import {
   getWorkoutTemplate,
   startWorkout,
 } from '@/lib/db';
+import { getExerciseTrackingMode, isTimedTrackingMode } from '@/lib/exerciseTracking';
 import {
   deleteWorkoutSet,
   finishCardio,
@@ -48,8 +49,10 @@ function formatSessionTimer(seconds: number) {
   return `${hours ? `${String(hours).padStart(2, '0')}:` : ''}${String(minutes).padStart(2, '0')}:${String(remainder).padStart(2, '0')}`;
 }
 
-function previousLabel(row?: PreviousRow) {
-  if (!row || row.weightKg == null || row.reps == null) return '—';
+function previousLabel(row: PreviousRow | undefined, repsOnly: boolean) {
+  if (!row || row.reps == null) return '—';
+  if (repsOnly) return `${row.reps} reps`;
+  if (row.weightKg == null) return '—';
   return `${formatNumber(row.weightKg)} × ${row.reps}`;
 }
 
@@ -75,7 +78,11 @@ export default function ExerciseScreen() {
   const [cardioElapsed, setCardioElapsed] = useState(0);
   const [cardioDistance, setCardioDistance] = useState('');
 
-  const isCardio = exercise?.muscle.toLowerCase().includes('cardio') ?? false;
+  const trackingMode = exercise ? getExerciseTrackingMode(exercise) : 'weighted-reps';
+  const isCardio = trackingMode === 'cardio';
+  const isTimedBodyweight = trackingMode === 'timed-bodyweight';
+  const isTimedActivity = isTimedTrackingMode(trackingMode);
+  const isBodyweightReps = trackingMode === 'bodyweight-reps';
   const isUnilateral = exercise ? /one[ -]?arm|single[ -]?arm|one[ -]?side|single[ -]?side|unilateral/i.test(exercise.name) : false;
 
   useEffect(() => {
@@ -85,12 +92,14 @@ export default function ExerciseScreen() {
       if (!detail) return;
       const template = parsedTemplateId ? await getWorkoutTemplate(parsedTemplateId) : null;
       const workout = await startWorkout(template?.name ?? 'Workout', parsedTemplateId);
-      const cardioExercise = detail.muscle.toLowerCase().includes('cardio');
+      const detailMode = getExerciseTrackingMode(detail);
+      const timedExercise = isTimedTrackingMode(detailMode);
+      const repsOnly = detailMode === 'bodyweight-reps';
       const [persistedSets, pbs, previousSets, cardioEntry] = await Promise.all([
-        cardioExercise ? Promise.resolve([]) : getWorkoutSets(workout.id, detail.slug),
-        cardioExercise ? Promise.resolve([]) : getPersonalBests(detail.slug),
-        cardioExercise ? Promise.resolve([]) : getPreviousExerciseSets(detail.slug, workout.id),
-        cardioExercise ? getCardioEntry(workout.id, detail.slug) : Promise.resolve(null),
+        timedExercise ? Promise.resolve([]) : getWorkoutSets(workout.id, detail.slug),
+        timedExercise ? Promise.resolve([]) : getPersonalBests(detail.slug),
+        timedExercise ? Promise.resolve([]) : getPreviousExerciseSets(detail.slug, workout.id),
+        timedExercise ? getCardioEntry(workout.id, detail.slug) : Promise.resolve(null),
       ]);
       if (cancelled) return;
 
@@ -103,14 +112,14 @@ export default function ExerciseScreen() {
       setCardio(cardioEntry);
       setCardioDistance(cardioEntry?.distanceKm == null ? '' : String(cardioEntry.distanceKm));
 
-      if (!cardioExercise) {
+      if (!timedExercise) {
         if (persistedSets.length) {
           const rowCount = Math.max(detail.targetSets, persistedSets.length);
           setSets(Array.from({ length: rowCount }, (_, index) => {
             const saved = persistedSets[index];
             const prior = previousSets[index];
             return {
-              kg: saved?.weightKg == null ? (prior?.weightKg == null ? '' : formatNumber(prior.weightKg)) : formatNumber(saved.weightKg),
+              kg: repsOnly ? '' : saved?.weightKg == null ? (prior?.weightKg == null ? '' : formatNumber(prior.weightKg)) : formatNumber(saved.weightKg),
               reps: saved?.reps == null ? (prior?.reps == null ? '' : String(prior.reps)) : String(saved.reps),
               complete: saved?.completed ?? false,
             };
@@ -119,7 +128,7 @@ export default function ExerciseScreen() {
           setSets(Array.from({ length: detail.targetSets }, (_, index) => {
             const prior = previousSets[index];
             return {
-              kg: prior?.weightKg == null ? '' : formatNumber(prior.weightKg),
+              kg: repsOnly ? '' : prior?.weightKg == null ? '' : formatNumber(prior.weightKg),
               reps: prior?.reps == null ? '' : String(prior.reps),
               complete: false,
             };
@@ -184,7 +193,7 @@ export default function ExerciseScreen() {
 
   const persistSet = async (index: number, row: SetRow) => {
     if (!workoutId || !exercise) return [];
-    const weightKg = row.kg.trim() === '' ? null : Number(row.kg);
+    const weightKg = isBodyweightReps || row.kg.trim() === '' ? null : Number(row.kg);
     const reps = row.reps.trim() === '' ? null : Number(row.reps);
     if ((weightKg !== null && !Number.isFinite(weightKg)) || (reps !== null && !Number.isFinite(reps))) return [];
     return saveTimedWorkoutSet({
@@ -194,14 +203,15 @@ export default function ExerciseScreen() {
       weightKg,
       reps,
       completed: row.complete,
-    });
+    }, { repsOnly: isBodyweightReps });
   };
 
   const updateSet = (index: number, field: 'kg' | 'reps', value: string) => {
     setSets((current) => {
       const nextRows = current.map((set, setIndex) => setIndex === index ? { ...set, [field]: value } : set);
       const next = nextRows[index];
-      if (next.kg.trim() && next.reps.trim()) persistSet(index, next).catch(() => undefined);
+      const ready = isBodyweightReps ? Boolean(next.reps.trim()) : Boolean(next.kg.trim() && next.reps.trim());
+      if (ready) persistSet(index, next).catch(() => undefined);
       return nextRows;
     });
   };
@@ -209,6 +219,12 @@ export default function ExerciseScreen() {
   const toggleComplete = async (index: number) => {
     if (!exercise) return;
     const current = sets[index];
+    const hasRequiredData = isBodyweightReps ? Boolean(current.reps.trim()) : Boolean(current.kg.trim() && current.reps.trim());
+    if (!current.complete && !hasRequiredData) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => undefined);
+      return;
+    }
+
     const next = { ...current, complete: !current.complete };
     Haptics.selectionAsync().catch(() => undefined);
     const nextRows = sets.map((set, setIndex) => setIndex === index ? next : set);
@@ -267,14 +283,20 @@ export default function ExerciseScreen() {
   }
 
   const weightPb = personalBests.find((pb) => pb.metric === 'weight');
+  const repsPb = personalBests.find((pb) => pb.metric === 'reps');
   const e1rmPb = personalBests.find((pb) => pb.metric === 'e1rm');
   const loadSuffix = isUnilateral ? ' kg / arm' : ' kg';
   const loadHeader = isUnilateral ? 'KG/ARM' : 'KG';
-  const pbHeadline = weightPb ? `${formatNumber(weightPb.value)}${loadSuffix} max set` : 'Set your baseline';
-  const pbSubline = e1rmPb ? `Estimated 1RM ${formatNumber(e1rmPb.value)}${loadSuffix}` : 'Complete a working set to start PB tracking';
+  const pbHeadline = isBodyweightReps
+    ? repsPb ? `${formatNumber(repsPb.value)} reps best set` : 'Set your baseline'
+    : weightPb ? `${formatNumber(weightPb.value)}${loadSuffix} max set` : 'Set your baseline';
+  const pbSubline = isBodyweightReps
+    ? repsPb ? 'Best completed bodyweight set' : 'Complete a working set to start rep tracking'
+    : e1rmPb ? `Estimated 1RM ${formatNumber(e1rmPb.value)}${loadSuffix}` : 'Complete a working set to start PB tracking';
   const targetLabel = `${exercise.targetSets} × ${exercise.minReps}${exercise.minReps !== exercise.maxReps ? `–${exercise.maxReps}` : ''}`;
-  const isFirstSetEntry = previous.every((row) => row.weightKg == null && row.reps == null)
-    && sets.every((row) => !row.kg.trim() && !row.reps.trim());
+  const isFirstSetEntry = isBodyweightReps
+    ? previous.every((row) => row.reps == null) && sets.every((row) => !row.reps.trim())
+    : previous.every((row) => row.weightKg == null && row.reps == null) && sets.every((row) => !row.kg.trim() && !row.reps.trim());
 
   return (
     <Screen>
@@ -294,9 +316,15 @@ export default function ExerciseScreen() {
       <Eyebrow>{exercise.muscle}</Eyebrow>
       <Title style={{ marginTop: 6 }}>{exercise.name}</Title>
       <Body style={{ marginTop: 9 }}>
-        {isCardio ? `${exercise.equipment} · timed cardio` : `${exercise.equipment} · Target ${targetLabel}`}
+        {isCardio
+          ? `${exercise.equipment} · timed cardio`
+          : isTimedBodyweight
+            ? `${exercise.equipment} · timed hold`
+            : isBodyweightReps
+              ? `${exercise.equipment} · Target ${targetLabel} reps`
+              : `${exercise.equipment} · Target ${targetLabel}`}
       </Body>
-      {isUnilateral ? <Text style={styles.loadNote}>Log the displayed load for each working arm.</Text> : null}
+      {isUnilateral && trackingMode === 'weighted-reps' ? <Text style={styles.loadNote}>Log the displayed load for each working arm.</Text> : null}
 
       {exerciseDone ? (
         <View style={styles.exerciseCompleteBanner}>
@@ -305,7 +333,7 @@ export default function ExerciseScreen() {
         </View>
       ) : null}
 
-      {!isCardio && newPbMetrics.length > 0 ? (
+      {!isTimedActivity && newPbMetrics.length > 0 ? (
         <View style={styles.pbCelebration}>
           <MaterialCommunityIcons name="trophy" size={18} color={colors.bg} />
           <View style={{ flex: 1 }}>
@@ -316,25 +344,45 @@ export default function ExerciseScreen() {
         </View>
       ) : null}
 
-      {isCardio ? (
+      {isTimedActivity ? (
         <>
           <Card style={styles.cardioCard}>
             <View style={styles.cardioTop}>
               <View>
-                <Text style={styles.micro}>{cardio?.completedAt ? 'CARDIO COMPLETE' : cardio?.startedAt ? 'CARDIO RUNNING' : 'CARDIO WARM-UP'}</Text>
+                <Text style={styles.micro}>
+                  {cardio?.completedAt
+                    ? isCardio ? 'CARDIO COMPLETE' : 'HOLD COMPLETE'
+                    : cardio?.startedAt
+                      ? isCardio ? 'CARDIO RUNNING' : 'HOLD RUNNING'
+                      : isCardio ? 'CARDIO WARM-UP' : 'TIMED HOLD'}
+                </Text>
                 <Text style={styles.cardioTimer}>{formatSessionTimer(cardioElapsed)}</Text>
               </View>
-              <View style={[styles.pbBadge, cardio?.startedAt && !cardio.completedAt && styles.cardioLive]}><MaterialCommunityIcons name="rowing" size={23} color={cardio?.startedAt && !cardio.completedAt ? colors.bg : colors.accent} /></View>
+              <View style={[styles.pbBadge, cardio?.startedAt && !cardio.completedAt && styles.cardioLive]}>
+                <MaterialCommunityIcons
+                  name={isCardio ? 'heart-pulse' : 'timer-outline'}
+                  size={23}
+                  color={cardio?.startedAt && !cardio.completedAt ? colors.bg : colors.accent}
+                />
+              </View>
             </View>
-            <Body>{cardio?.completedAt ? 'Timer saved. Add the machine distance if you want it in your session record.' : 'One tap starts the timer. It keeps the original timestamp if Forge goes to the background.'}</Body>
-            {!cardio?.startedAt || cardio.completedAt ? (
-              <PrimaryButton label={cardio?.completedAt ? 'Start another effort' : 'Start cardio'} icon="play" onPress={beginCardio} />
-            ) : (
-              <PrimaryButton label="Stop cardio" icon="stop" onPress={stopCardio} />
-            )}
+            <Body>
+              {cardio?.completedAt
+                ? isCardio
+                  ? 'Timer saved. Add the machine distance if you want it in your session record.'
+                  : 'Timed hold saved to this workout.'
+                : 'One tap starts the timer. It keeps the original timestamp if Forge goes to the background.'}
+            </Body>
+            {!cardio?.startedAt ? (
+              <PrimaryButton label={isCardio ? 'Start cardio' : 'Start hold'} icon="play" onPress={beginCardio} />
+            ) : !cardio.completedAt ? (
+              <PrimaryButton label={isCardio ? 'Stop cardio' : 'Stop hold'} icon="stop" onPress={stopCardio} />
+            ) : isCardio ? (
+              <PrimaryButton label="Start another effort" icon="play" onPress={beginCardio} />
+            ) : null}
           </Card>
 
-          {cardio?.startedAt ? (
+          {isCardio && cardio?.startedAt ? (
             <Card style={styles.distanceCard}>
               <View style={{ flex: 1 }}><Text style={styles.micro}>DISTANCE</Text><Text style={styles.distanceHelp}>Enter what the machine displays</Text></View>
               <TextInput
@@ -356,7 +404,7 @@ export default function ExerciseScreen() {
         <>
           <Card style={styles.performanceCard}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.micro}>CURRENT PB</Text>
+              <Text style={styles.micro}>{isBodyweightReps ? 'CURRENT REP BEST' : 'CURRENT PB'}</Text>
               <Text style={styles.big}>{pbHeadline}</Text>
               <Text style={styles.pbSubline}>{pbSubline}</Text>
             </View>
@@ -378,29 +426,37 @@ export default function ExerciseScreen() {
           <View style={styles.tableHeader}>
             <Text style={[styles.columnHead, { width: 42 }]}>SET</Text>
             <Text style={[styles.columnHead, { flex: 1 }]}>PREVIOUS</Text>
-            <Text style={[styles.columnHead, { width: 78, textAlign: 'center' }]}>{loadHeader}</Text>
-            <Text style={[styles.columnHead, { width: 68, textAlign: 'center' }]}>REPS</Text>
+            {!isBodyweightReps ? <Text style={[styles.columnHead, { width: 78, textAlign: 'center' }]}>{loadHeader}</Text> : null}
+            <Text style={[styles.columnHead, { width: isBodyweightReps ? 104 : 68, textAlign: 'center' }]}>REPS</Text>
             <View style={{ width: 42 }} />
           </View>
-          {isFirstSetEntry ? <Text style={styles.setHint}>Tap the green + under {loadHeader} and REPS to set your target, then tick the set when you finish it.</Text> : null}
+          {isFirstSetEntry ? (
+            <Text style={styles.setHint}>
+              {isBodyweightReps
+                ? 'Tap the green + under REPS to set your target, then tick the set when you finish it.'
+                : `Tap the green + under ${loadHeader} and REPS to set your target, then tick the set when you finish it.`}
+            </Text>
+          ) : null}
           <View style={styles.setList}>
             {sets.map((set, index) => {
               const canDelete = index === sets.length - 1 && index >= exercise.targetSets && !set.complete;
               return (
                 <View key={index} style={[styles.setRow, set.complete && styles.setComplete]}>
                   <Text style={styles.setNumber}>{index + 1}</Text>
-                  <Text style={styles.previous}>{previousLabel(previous[index])}</Text>
-                  <TextInput
-                    accessibilityLabel={`Weight in kilograms for set ${index + 1}`}
-                    value={set.kg}
-                    onChangeText={(value) => updateSet(index, 'kg', value)}
-                    onEndEditing={() => persistSet(index, sets[index]).catch(() => undefined)}
-                    keyboardType="decimal-pad"
-                    placeholder="+"
-                    placeholderTextColor={colors.accent}
-                    style={styles.setInput}
-                    selectTextOnFocus={Boolean(set.kg)}
-                  />
+                  <Text style={styles.previous}>{previousLabel(previous[index], isBodyweightReps)}</Text>
+                  {!isBodyweightReps ? (
+                    <TextInput
+                      accessibilityLabel={`Weight in kilograms for set ${index + 1}`}
+                      value={set.kg}
+                      onChangeText={(value) => updateSet(index, 'kg', value)}
+                      onEndEditing={() => persistSet(index, sets[index]).catch(() => undefined)}
+                      keyboardType="decimal-pad"
+                      placeholder="+"
+                      placeholderTextColor={colors.accent}
+                      style={styles.setInput}
+                      selectTextOnFocus={Boolean(set.kg)}
+                    />
+                  ) : null}
                   <TextInput
                     accessibilityLabel={`Repetitions for set ${index + 1}`}
                     value={set.reps}
@@ -409,7 +465,7 @@ export default function ExerciseScreen() {
                     keyboardType="number-pad"
                     placeholder="+"
                     placeholderTextColor={colors.accent}
-                    style={styles.repInput}
+                    style={[styles.repInput, isBodyweightReps && styles.repOnlyInput]}
                     selectTextOnFocus={Boolean(set.reps)}
                   />
                   {canDelete ? (
@@ -441,7 +497,14 @@ export default function ExerciseScreen() {
         ) : (
           <View style={styles.techniqueRow}>
             <View style={styles.videoPlaceholder}><View style={styles.playMuted}><MaterialCommunityIcons name="video-off-outline" size={24} color={colors.bg} /></View></View>
-            <View style={{ flex: 1 }}><Text style={styles.techniqueTitle}>Keep the rep clean</Text><Body>{exercise.techniqueNotes ?? (isCardio ? 'Use a controlled sustainable pace for the warm-up and stop if anything feels wrong.' : 'Use a controlled range of motion and stop the set when technique starts to break down.')}</Body></View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.techniqueTitle}>Keep the rep clean</Text>
+              <Body>{exercise.techniqueNotes ?? (isCardio
+                ? 'Use a controlled sustainable pace for the warm-up and stop if anything feels wrong.'
+                : isTimedBodyweight
+                  ? 'Brace steadily and end the hold when you can no longer maintain the intended position.'
+                  : 'Use a controlled range of motion and stop the set when technique starts to break down.')}</Body>
+            </View>
           </View>
         )}
       </Card>
@@ -488,6 +551,7 @@ const styles = StyleSheet.create({
   previous: { flex: 1, color: colors.faint, fontSize: 11, fontWeight: '700' },
   setInput: { width: 78, minHeight: 48, borderRadius: 12, backgroundColor: colors.surface3, color: colors.text, textAlign: 'center', fontSize: 16, fontWeight: '900', paddingVertical: 10, marginHorizontal: 2 },
   repInput: { width: 68, minHeight: 48, borderRadius: 12, backgroundColor: colors.surface3, color: colors.text, textAlign: 'center', fontSize: 16, fontWeight: '900', paddingVertical: 10, marginHorizontal: 2 },
+  repOnlyInput: { width: 104 },
   check: { width: 36, height: 36, borderRadius: 18, borderWidth: 1, borderColor: colors.faint, alignItems: 'center', justifyContent: 'center', marginLeft: 5 },
   checkDone: { backgroundColor: colors.accent, borderColor: colors.accent },
   deleteSet: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#2A1715', alignItems: 'center', justifyContent: 'center', marginLeft: 5 },
