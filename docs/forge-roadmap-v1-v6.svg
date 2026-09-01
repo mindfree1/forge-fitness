@@ -11,7 +11,7 @@
   <text x="60" y="145" class="title">Forge Roadmap &amp; Milestones</text>
   <text x="60" y="192" class="sub">Local-first • open source • zero cost • personal use first</text>
   <rect x="1325" y="52" rx="25" width="415" height="55" fill="#0a1017" stroke="#f4b942" stroke-width="2"/>
-  <text x="1532" y="87" text-anchor="middle" class="label" fill="#f4b942">TARGET: V6 BY 4 OCT 2026</text>
+  <text x="1532" y="87" text-anchor="middle" class="label" fill="#f4b942">TARGET: V6 BY 11 OCT 2026</text>
 
   <rect x="60" y="225" rx="18" width="1680" height="108" fill="#0a1118" stroke="#263342" stroke-width="2"/>
   <text x="86" y="260" class="label" fill="#ff5a36">SCOPE GUARDRAILS</text>
@@ -30,7 +30,7 @@
     <rect width="530" height="410" rx="22" fill="#0d141d" stroke="#263342" stroke-width="2"/><rect width="530" height="10" rx="6" fill="#ff5a36"/>
     <text x="28" y="63" class="v" fill="#ff5a36">V1</text><text x="108" y="56" class="h">FOUNDATION</text>
     <rect x="355" y="26" width="145" height="42" rx="20" fill="#0a1017" stroke="#ff5a36"/><text x="427" y="53" text-anchor="middle" class="label" fill="#ff5a36">DONE</text>
-    <text x="28" y="97" class="date" fill="#ff5a36">30 AUG 2026</text>
+    <text x="28" y="97" class="date" fill="#ff5a36">SUN 30 AUG 2026</text>
     <text x="28" y="137" class="bold">Make logging usable in a real workout.</text>
     <text x="30" y="185" class="body">• Today / Train / Progress / Goals shell</text><text x="30" y="220" class="body">• Weight + rep entry</text><text x="30" y="255" class="body">• Initial exercise set</text><text x="30" y="290" class="body">• Local SQLite foundation</text>
     <line x1="28" y1="330" x2="502" y2="330" stroke="#263342"/><text x="28" y="360" class="label" fill="#ff5a36">MILESTONE</text><text x="28" y="392" class="small">A complete workout can be logged quickly.</text>
@@ -41,7 +41,7 @@
     <rect width="530" height="410" rx="22" fill="#0d141d" stroke="#263342" stroke-width="2"/><rect width="530" height="10" rx="6" fill="#41a9ff"/>
     <text x="28" y="63" class="v" fill="#41a9ff">V2</text><text x="108" y="56" class="h">PERSISTENCE</text>
     <rect x="355" y="26" width="145" height="42" rx="20" fill="#0a1017" stroke="#41a9ff"/><text x="427" y="53" text-anchor="middle" class="label" fill="#41a9ff">DONE</text>
-    <text x="28" y="97" class="date" fill="#41a9ff">30 AUG 2026</text>
+    <text x="28" y="97" class="date" fill="#41a9ff">SUN 30 AUG 2026</text>
     <text x="28" y="137" class="bold">Remember what happened between sessions.</text>
     <text x="30" y="185" class="body">• Persist workouts + sets</text><text x="30" y="220" class="body">• Resume unfinished sessions</text><text x="30" y="255" class="body">• PB detection + rest timer</text><text x="30" y="290" class="body">• History survives app restarts</text>
     <line x1="28" y1="330" x2="502" y2="330" stroke="#263342"/><text x="28" y="360" class="label" fill="#41a9ff">MILESTONE</text><text x="28" y="392" class="small">No more remembering last session yourself.</text>
@@ -52,7 +52,7 @@
     <rect width="530" height="410" rx="22" fill="#0d141d" stroke="#263342" stroke-width="2"/><rect width="530" height="10" rx="6" fill="#4fd1c5"/>
     <text x="28" y="63" class="v" fill="#4fd1c5">V3</text><text x="108" y="56" class="h">PROGRAMS + MEDIA</text>
     <rect x="355" y="26" width="145" height="42" rx="20" fill="#0a1017" stroke="#4fd1c5"/><text x="427" y="53" text-anchor="middle" class="label" fill="#4fd1c5">QA NOW</text>
-    <text x="28" y="97" class="date" fill="#4fd1c5">1–3 SEP</text>
+    <text x="28" y="97" class="date" fill="#4fd1c5">30 AUG – 3 SEP 2026</text>
     <text x="28" y="137" class="bold">Turn Forge into the thing you actually train from.</text>
     <text x="30" y="185" class="body">• Editable workout rotation</text><text x="30" y="220" class="body">• Exercise library + custom exercises</text><text x="30" y="255" class="body">• YouTube technique videos</text><text x="30" y="290" class="body">• Previous-set context + real Today/Train flow</text>
     <line x1="28" y1="330" x2="502" y2="330" stroke="#263342"/><text x="28" y="360" class="label" fill="#4fd1c5">MILESTONE</text><text x="28" y="392" class="small">Session 1: zero-friction logging + persistence.</text>
@@ -63,7 +63,7 @@
     <rect width="530" height="430" rx="22" fill="#0d141d" stroke="#263342" stroke-width="2"/><rect width="530" height="10" rx="6" fill="#a87cff"/>
     <text x="28" y="63" class="v" fill="#a87cff">V4</text><text x="108" y="56" class="h">PROGRESS ANALYTICS</text>
     <rect x="335" y="26" width="165" height="42" rx="20" fill="#0a1017" stroke="#a87cff"/><text x="417" y="53" text-anchor="middle" class="label" fill="#a87cff">IN PROGRESS</text>
-    <text x="28" y="97" class="date" fill="#a87cff">3–6 SEP</text>
+    <text x="28" y="97" class="date" fill="#a87cff">31 AUG – 7 SEP 2026</text>
     <text x="28" y="137" class="bold">Show whether the training is working.</text>
     <text x="30" y="185" class="body">• 7D / 30D / 12W / 1Y ranges</text><text x="30" y="220" class="body">• e1RM / max weight / volume</text><text x="30" y="255" class="body">• Consistency + bodyweight trends</text><text x="30" y="290" class="body">• PB history + deltas</text><text x="30" y="325" class="body">• Muscle-balance volume</text>
     <line x1="28" y1="350" x2="502" y2="350" stroke="#263342"/><text x="28" y="380" class="label" fill="#a87cff">MILESTONE</text><text x="28" y="412" class="small">Sessions 2–3 produce correct, useful graphs.</text>
@@ -74,7 +74,7 @@
     <rect width="530" height="430" rx="22" fill="#0d141d" stroke="#263342" stroke-width="2"/><rect width="530" height="10" rx="6" fill="#57d67a"/>
     <text x="28" y="63" class="v" fill="#57d67a">V5</text><text x="108" y="56" class="h">TRAINING GUIDANCE</text>
     <rect x="355" y="26" width="145" height="42" rx="20" fill="#0a1017" stroke="#57d67a"/><text x="427" y="53" text-anchor="middle" class="label" fill="#57d67a">PLANNED</text>
-    <text x="28" y="97" class="date" fill="#57d67a">7–18 SEP</text>
+    <text x="28" y="97" class="date" fill="#57d67a">8–20 SEP 2026</text>
     <text x="28" y="137" class="bold">Answer: what weight / reps should I do next?</text>
     <text x="30" y="185" class="body">• Strength / Muscle / Balanced modes</text><text x="30" y="220" class="body">• Easy / Good / Hard / Max effort</text><text x="30" y="255" class="body">• RIR under the hood</text><text x="30" y="290" class="body">• Progressive-overload engine</text><text x="30" y="325" class="body">• Increase / repeat / build reps / reduce</text>
     <line x1="28" y1="350" x2="502" y2="350" stroke="#263342"/><text x="28" y="380" class="label" fill="#57d67a">MILESTONE</text><text x="28" y="412" class="small">3–5 repeated sessions → advice feels trustworthy.</text>
@@ -85,7 +85,7 @@
     <rect width="530" height="430" rx="22" fill="#0d141d" stroke="#263342" stroke-width="2"/><rect width="530" height="10" rx="6" fill="#f4b942"/>
     <text x="28" y="63" class="v" fill="#f4b942">V6</text><text x="108" y="56" class="h">GOAL-AWARE PERSONAL</text>
     <rect x="355" y="26" width="145" height="42" rx="20" fill="#0a1017" stroke="#f4b942"/><text x="427" y="53" text-anchor="middle" class="label" fill="#f4b942">PLANNED</text>
-    <text x="28" y="97" class="date" fill="#f4b942">19 SEP – 4 OCT</text>
+    <text x="28" y="97" class="date" fill="#f4b942">21 SEP – 11 OCT 2026</text>
     <text x="28" y="137" class="bold">Connect goals, body changes and program decisions.</text>
     <text x="30" y="185" class="body">• Recurring body / weight check-ins</text><text x="30" y="220" class="body">• BMI + estimated body-fat trends</text><text x="30" y="255" class="body">• Goal + muscle/movement coverage analysis</text><text x="30" y="290" class="body">• Relevant exercise recommendations only</text><text x="30" y="325" class="body">• One-tap add-to-rotation + simple nutrition guidance</text>
     <line x1="28" y1="350" x2="502" y2="350" stroke="#263342"/><text x="28" y="380" class="label" fill="#f4b942">MILESTONE</text><text x="28" y="412" class="small">Forge explains what changed and what to do next.</text>
