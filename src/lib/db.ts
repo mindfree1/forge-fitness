@@ -603,13 +603,86 @@ export async function startWorkout(name: string, templateId: number | null = nul
   };
 }
 
-export async function finishWorkout(workoutId: number) {
+export async function finishWorkout(workoutId: number, completedAt = new Date().toISOString()) {
   const db = await database();
   await db.runAsync(
     'UPDATE workouts SET completed_at = ? WHERE id = ?',
-    new Date().toISOString(),
+    completedAt,
     workoutId,
   );
+}
+
+export async function updateWorkoutTimes(workoutId: number, startedAt: string, completedAt: string | null) {
+  const db = await database();
+  await db.runAsync(
+    'UPDATE workouts SET started_at = ?, completed_at = ? WHERE id = ?',
+    startedAt,
+    completedAt,
+    workoutId,
+  );
+}
+
+export async function updateActiveWorkoutTemplate(workoutId: number, templateId: number | null, name: string) {
+  const db = await database();
+  await db.runAsync(
+    'UPDATE workouts SET template_id = ?, name = ? WHERE id = ? AND completed_at IS NULL',
+    templateId,
+    name,
+    workoutId,
+  );
+}
+
+export async function rebuildPersonalBests() {
+  const db = await database();
+  const rows = await db.getAllAsync<{
+    exercise_id: number;
+    weight_kg: number | null;
+    reps: number | null;
+    achieved_at: string;
+  }>(
+    `SELECT ws.exercise_id, ws.weight_kg, ws.reps, COALESCE(ws.set_completed_at, w.completed_at) AS achieved_at
+     FROM workout_sets ws
+     JOIN workouts w ON w.id = ws.workout_id
+     WHERE ws.completed = 1
+       AND w.completed_at IS NOT NULL
+       AND ws.reps IS NOT NULL AND ws.reps > 0
+     ORDER BY achieved_at ASC, ws.id ASC`,
+  );
+
+  await db.withTransactionAsync(async () => {
+    await db.runAsync('DELETE FROM personal_bests');
+    const best = new Map<string, number>();
+    for (const row of rows) {
+      const metrics: Array<[PersonalBest['metric'], number]> = [['reps', row.reps ?? 0]];
+      if (row.weight_kg != null && row.weight_kg > 0 && row.reps) {
+        metrics.push(
+          ['weight', row.weight_kg],
+          ['e1rm', row.weight_kg * (1 + row.reps / 30)],
+          ['volume', row.weight_kg * row.reps],
+        );
+      }
+      for (const [metric, value] of metrics) {
+        const key = `${row.exercise_id}:${metric}`;
+        const current = best.get(key);
+        if (current == null || value > current) {
+          await db.runAsync(
+            'INSERT INTO personal_bests (exercise_id, metric, value, achieved_at) VALUES (?, ?, ?, ?)',
+            row.exercise_id,
+            metric,
+            value,
+            row.achieved_at,
+          );
+          best.set(key, value);
+        }
+      }
+    }
+  });
+}
+
+export async function deleteWorkout(workoutId: number) {
+  const db = await database();
+  await db.runAsync('DELETE FROM workouts WHERE id = ?', workoutId);
+  await rebuildPersonalBests();
 }
 
 async function exerciseIdForSlug(slug: string) {
@@ -764,14 +837,16 @@ export async function saveWorkoutSet(set: WorkoutSet): Promise<PersonalBest['met
     set.completed ? 1 : 0,
   );
 
-  if (!set.completed || !set.weightKg || !set.reps) return [];
+  if (!set.completed || !set.reps) return [];
 
-  const metrics: Array<[PersonalBest['metric'], number]> = [
-    ['weight', set.weightKg],
-    ['reps', set.reps],
-    ['e1rm', set.weightKg * (1 + set.reps / 30)],
-    ['volume', set.weightKg * set.reps],
-  ];
+  const metrics: Array<[PersonalBest['metric'], number]> = [['reps', set.reps]];
+  if (set.weightKg != null && set.weightKg > 0) {
+    metrics.push(
+      ['weight', set.weightKg],
+      ['e1rm', set.weightKg * (1 + set.reps / 30)],
+      ['volume', set.weightKg * set.reps],
+    );
+  }
   const achieved: PersonalBest['metric'][] = [];
   const achievedAt = new Date().toISOString();
 
