@@ -120,6 +120,8 @@ export async function initialiseDatabase() {
   await ensureColumn(db, 'exercises', 'video_url', 'TEXT');
   await ensureColumn(db, 'exercises', 'technique_notes', 'TEXT');
   await ensureColumn(db, 'workouts', 'template_id', 'INTEGER REFERENCES workout_templates(id)');
+  await ensureColumn(db, 'workout_sets', 'intent_started_at', 'TEXT');
+  await ensureColumn(db, 'workout_sets', 'set_completed_at', 'TEXT');
 
   for (const exercise of exerciseLibrarySeed) {
     await db.runAsync(
