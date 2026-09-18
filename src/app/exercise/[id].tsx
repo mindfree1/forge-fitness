@@ -114,9 +114,10 @@ export default function ExerciseScreen() {
 
       if (!timedExercise) {
         if (persistedSets.length) {
-          const rowCount = Math.max(detail.targetSets, persistedSets.length);
+          const highestSavedSet = persistedSets.reduce((max, item) => Math.max(max, item.setNumber), 0);
+          const rowCount = Math.max(detail.targetSets, highestSavedSet);
           setSets(Array.from({ length: rowCount }, (_, index) => {
-            const saved = persistedSets[index];
+            const saved = persistedSets.find((item) => item.setNumber === index + 1);
             const prior = previousSets[index];
             return {
               kg: repsOnly ? '' : saved?.weightKg == null ? (prior?.weightKg == null ? '' : formatNumber(prior.weightKg)) : formatNumber(saved.weightKg),
