@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { Card } from '@/components/Card';
 import { PrimaryButton } from '@/components/PrimaryButton';
@@ -251,10 +251,29 @@ export default function ExerciseScreen() {
 
   const addSet = () => setSets((current) => [...current, { kg: '', reps: '', complete: false }]);
 
-  const removeLastExtraSet = async (index: number) => {
-    if (!workoutId || !exercise || index !== sets.length - 1 || index < exercise.targetSets || sets[index].complete) return;
+  const deleteSetAt = async (index: number) => {
+    if (!workoutId || !exercise) return;
     await deleteWorkoutSet(workoutId, exercise.slug, index + 1);
-    setSets((current) => current.slice(0, -1));
+    setNewPbMetrics([]);
+    await refreshPbs();
+    setSets((current) => {
+      if (index < exercise.targetSets) {
+        return current.map((row, rowIndex) => rowIndex === index ? { kg: '', reps: '', complete: false } : row);
+      }
+      return current.filter((_, rowIndex) => rowIndex !== index);
+    });
+    setExerciseDone(false);
+  };
+
+  const confirmDeleteSet = (index: number) => {
+    Alert.alert(
+      `Delete set ${index + 1}?`,
+      'The logged set will be removed and Forge will rebuild PB history if this set created a record.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete set', style: 'destructive', onPress: () => { deleteSetAt(index).catch(() => undefined); } },
+      ],
+    );
   };
 
   const beginCardio = async () => {
@@ -302,7 +321,7 @@ export default function ExerciseScreen() {
     <Screen>
       <View style={styles.nav}>
         <Pressable onPress={() => router.back()} style={styles.navButton}><MaterialCommunityIcons name="arrow-left" size={22} color={colors.text} /></Pressable>
-        <Text style={styles.navTitle}>SESSION {formatSessionTimer(sessionElapsed)}</Text>
+        <Text style={styles.navTitle}>{sessionElapsed > 6 * 3600 ? 'SESSION NEEDS REVIEW' : `SESSION ${formatSessionTimer(sessionElapsed)}`}</Text>
         <Pressable
           onPress={() => {
             if (parsedTemplateId) router.push({ pathname: '/workout-template/[id]', params: { id: String(parsedTemplateId) } });
@@ -439,9 +458,14 @@ export default function ExerciseScreen() {
           ) : null}
           <View style={styles.setList}>
             {sets.map((set, index) => {
-              const canDelete = index === sets.length - 1 && index >= exercise.targetSets && !set.complete;
               return (
-                <View key={index} style={[styles.setRow, set.complete && styles.setComplete]}>
+                <Pressable
+                  key={index}
+                  onLongPress={() => confirmDeleteSet(index)}
+                  delayLongPress={450}
+                  style={[styles.setRow, set.complete && styles.setComplete]}
+                  accessibilityHint="Long press to delete this set"
+                >
                   <Text style={styles.setNumber}>{index + 1}</Text>
                   <Text style={styles.previous}>{previousLabel(previous[index], isBodyweightReps)}</Text>
                   {!isBodyweightReps ? (
@@ -468,22 +492,17 @@ export default function ExerciseScreen() {
                     style={[styles.repInput, isBodyweightReps && styles.repOnlyInput]}
                     selectTextOnFocus={Boolean(set.reps)}
                   />
-                  {canDelete ? (
-                    <Pressable onPress={() => removeLastExtraSet(index)} style={styles.deleteSet} accessibilityLabel={`Delete set ${index + 1}`}>
-                      <MaterialCommunityIcons name="trash-can-outline" size={18} color={colors.danger} />
-                    </Pressable>
-                  ) : (
-                    <Pressable onPress={() => toggleComplete(index)} style={[styles.check, set.complete && styles.checkDone]}>
-                      {set.complete && <MaterialCommunityIcons name="check" size={17} color={colors.bg} />}
-                    </Pressable>
-                  )}
-                </View>
+                  <Pressable onPress={() => toggleComplete(index)} style={[styles.check, set.complete && styles.checkDone]}>
+                    {set.complete && <MaterialCommunityIcons name="check" size={17} color={colors.bg} />}
+                  </Pressable>
+                </Pressable>
               );
             })}
           </View>
           <Pressable onPress={addSet} style={styles.addSet}>
             <MaterialCommunityIcons name="plus" size={18} color={colors.accent} /><Text style={styles.addSetText}>Add set</Text>
           </Pressable>
+          <Text style={styles.deleteHint}>Long-press any set row to delete a mistaken or completed set.</Text>
         </>
       )}
 
@@ -557,6 +576,7 @@ const styles = StyleSheet.create({
   deleteSet: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#2A1715', alignItems: 'center', justifyContent: 'center', marginLeft: 5 },
   addSet: { marginTop: 10, height: 48, borderRadius: radii.md, borderWidth: 1, borderStyle: 'dashed', borderColor: colors.border, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 7 },
   addSetText: { color: colors.accent, fontSize: 12, fontWeight: '900' },
+  deleteHint: { color: colors.faint, fontSize: 9, fontWeight: '700', textAlign: 'center', marginTop: 8 },
   techniqueCard: { gap: 14 },
   techniqueRow: { flexDirection: 'row', gap: 14, alignItems: 'center' },
   videoFrame: { height: 210, width: '100%', borderRadius: radii.md, overflow: 'hidden', backgroundColor: colors.surface3 },
