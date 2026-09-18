@@ -9,7 +9,7 @@ Session 2 exposed four concrete gym-flow problems: a forgotten session could kee
 ## Included
 
 ### Stale-session recovery
-- active sessions older than six hours are treated as unfinished sessions that need review rather than valid marathon workouts
+- active sessions older than four hours are treated as unfinished sessions that need review rather than valid marathon workouts
 - the Train screen suppresses the absurd elapsed timer and opens a recovery sheet
 - **Fix using logged activity** uses the first and last reliable set/cardio completion timestamps to repair the workout start/end time
 - **Continue this session** keeps the workout open deliberately
