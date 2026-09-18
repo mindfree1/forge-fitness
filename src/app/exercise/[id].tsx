@@ -321,7 +321,7 @@ export default function ExerciseScreen() {
     <Screen>
       <View style={styles.nav}>
         <Pressable onPress={() => router.back()} style={styles.navButton}><MaterialCommunityIcons name="arrow-left" size={22} color={colors.text} /></Pressable>
-        <Text style={styles.navTitle}>{sessionElapsed > 6 * 3600 ? 'SESSION NEEDS REVIEW' : `SESSION ${formatSessionTimer(sessionElapsed)}`}</Text>
+        <Text style={styles.navTitle}>{sessionElapsed > 4 * 3600 ? 'SESSION NEEDS REVIEW' : `SESSION ${formatSessionTimer(sessionElapsed)}`}</Text>
         <Pressable
           onPress={() => {
             if (parsedTemplateId) router.push({ pathname: '/workout-template/[id]', params: { id: String(parsedTemplateId) } });
