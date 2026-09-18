@@ -26,6 +26,7 @@ import {
   getWorkoutCompletionSummary,
   getWorkoutExercisePlan,
   getWorkoutExerciseProgress,
+  removeExerciseFromWorkout,
   setWorkoutExerciseOrder,
   type WorkoutCompletionSummary,
   type WorkoutExerciseProgress,
@@ -151,7 +152,7 @@ export default function TrainScreen() {
       return;
     }
     const ageSeconds = Math.max(0, (Date.now() - Date.parse(activeWorkout.startedAt)) / 1000);
-    if (ageSeconds > 6 * 3600 && stalePromptedId !== activeWorkout.id) {
+    if (ageSeconds > 4 * 3600 && stalePromptedId !== activeWorkout.id) {
       setStalePromptOpen(true);
     }
   }, [activeWorkout, stalePromptedId]);
@@ -168,7 +169,7 @@ export default function TrainScreen() {
   }).length, [progressMap, sessionExercises]);
 
   useEffect(() => {
-    if (!activeWorkout || !sessionExercises.length) return;
+    if (!activeWorkout || !sessionExercises.length || elapsedSeconds > 4 * 3600) return;
     if (completedCount === sessionExercises.length && finishPromptDismissedId !== activeWorkout.id) {
       setFinishPromptOpen(true);
     }
@@ -284,6 +285,29 @@ export default function TrainScreen() {
     await setWorkoutExerciseOrder(activeWorkout.id, next.map((exercise) => exercise.id));
   }, [activeWorkout, sessionExercises]);
 
+  const confirmRemoveExercise = (exercise: WorkoutTemplateExercise) => {
+    if (!activeWorkout) return;
+    Alert.alert(
+      'Remove from this session?',
+      `${exercise.name} will be removed only from today’s active workout. Your permanent program stays unchanged.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove exercise',
+          style: 'destructive',
+          onPress: () => {
+            removeExerciseFromWorkout(activeWorkout.id, exercise.id)
+              .then(async () => {
+                setSessionExercises(await getWorkoutExercisePlan(activeWorkout.id, activeWorkout.templateId));
+                setProgress(await getWorkoutExerciseProgress(activeWorkout.id));
+              })
+              .catch(() => undefined);
+          },
+        },
+      ],
+    );
+  };
+
   const addExercise = async (exercise: ExerciseLibraryItem) => {
     if (!activeWorkout) return;
     await addExerciseToWorkout(activeWorkout.id, exercise.id);
@@ -323,12 +347,12 @@ export default function TrainScreen() {
           <>
             <View style={styles.sessionTimerRow}>
               <View>
-                <Text style={styles.heroLabel}>{elapsedSeconds > 6 * 3600 ? 'UNFINISHED SESSION' : 'SESSION RUNNING'}</Text>
-                <Text style={styles.sessionTimer}>{elapsedSeconds > 6 * 3600 ? 'Needs review' : formatSessionTime(elapsedSeconds)}</Text>
+                <Text style={styles.heroLabel}>{elapsedSeconds > 4 * 3600 ? 'UNFINISHED SESSION' : 'SESSION RUNNING'}</Text>
+                <Text style={styles.sessionTimer}>{elapsedSeconds > 4 * 3600 ? 'Needs review' : formatSessionTime(elapsedSeconds)}</Text>
               </View>
               <View style={styles.roundIcon}><MaterialCommunityIcons name="timer-outline" size={25} color={colors.accent} /></View>
             </View>
-            <Text style={styles.heroCopy}>{completedCount} of {sessionExercises.length} exercises complete. Train in whatever order the gym allows.</Text>
+            <Text style={styles.heroCopy}>{completedCount} of {sessionExercises.length} exercises complete. Drag to reorder; long-press an exercise to remove it from this session.</Text>
             <Pressable onPress={finishSession} style={styles.finishButton}>
               <MaterialCommunityIcons name="flag-checkered" size={17} color={colors.text} />
               <Text style={styles.finishText}>Finish session</Text>
@@ -392,7 +416,13 @@ export default function TrainScreen() {
           const done = timed ? Boolean(item?.cardioComplete) : (item?.completedSets ?? 0) >= exercise.targetSets;
           return (
             <View key={`${exercise.id}:${index}`} style={[styles.exercise, done && styles.exerciseDone]}>
-              <Pressable onPress={() => openExercise(exercise)} style={styles.exerciseOpen}>
+              <Pressable
+                onPress={() => openExercise(exercise)}
+                onLongPress={activeWorkout ? () => confirmRemoveExercise(exercise) : undefined}
+                delayLongPress={500}
+                style={styles.exerciseOpen}
+                accessibilityHint={activeWorkout ? 'Long press to remove this exercise from the current session' : undefined}
+              >
                 <View style={[styles.index, done && styles.indexDone]}>
                   {done ? <MaterialCommunityIcons name="check" size={17} color={colors.bg} /> : <Text style={styles.indexText}>{String(index + 1).padStart(2, '0')}</Text>}
                 </View>
