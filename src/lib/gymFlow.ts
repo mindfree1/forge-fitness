@@ -138,32 +138,12 @@ export async function deleteWorkoutSet(workoutId: number, exerciseSlug: string, 
   await ensureGymFlowSchema();
   const db = await database();
   const exerciseId = await exerciseIdForSlug(exerciseSlug);
-  await db.withTransactionAsync(async () => {
-    await db.runAsync(
-      'DELETE FROM workout_sets WHERE workout_id = ? AND exercise_id = ? AND set_number = ?',
-      workoutId,
-      exerciseId,
-      setNumber,
-    );
-    const later = await db.getAllAsync<{ set_number: number }>(
-      `SELECT set_number
-       FROM workout_sets
-       WHERE workout_id = ? AND exercise_id = ? AND set_number > ?
-       ORDER BY set_number ASC`,
-      workoutId,
-      exerciseId,
-      setNumber,
-    );
-    for (const row of later) {
-      await db.runAsync(
-        'UPDATE workout_sets SET set_number = ? WHERE workout_id = ? AND exercise_id = ? AND set_number = ?',
-        row.set_number - 1,
-        workoutId,
-        exerciseId,
-        row.set_number,
-      );
-    }
-  });
+  await db.runAsync(
+    'DELETE FROM workout_sets WHERE workout_id = ? AND exercise_id = ? AND set_number = ?',
+    workoutId,
+    exerciseId,
+    setNumber,
+  );
   await rebuildPersonalBests();
 }
 
