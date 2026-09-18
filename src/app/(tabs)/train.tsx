@@ -373,7 +373,7 @@ export default function TrainScreen() {
             <View style={styles.heroTop}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.heroLabel}>TODAY'S TARGET</Text>
-                <Text style={styles.heroValue}>{template.workingSets} working sets</Text>
+                <Text style={styles.heroValue}>{template?.workingSets ?? 0} working sets</Text>
               </View>
               <View style={styles.roundIcon}><MaterialCommunityIcons name="dumbbell" size={24} color={colors.accent} /></View>
             </View>
