@@ -642,11 +642,10 @@ export async function rebuildPersonalBests() {
     reps: number | null;
     achieved_at: string;
   }>(
-    `SELECT ws.exercise_id, ws.weight_kg, ws.reps, COALESCE(ws.set_completed_at, w.completed_at) AS achieved_at
+    `SELECT ws.exercise_id, ws.weight_kg, ws.reps, COALESCE(ws.set_completed_at, w.completed_at, w.started_at) AS achieved_at
      FROM workout_sets ws
      JOIN workouts w ON w.id = ws.workout_id
      WHERE ws.completed = 1
-       AND w.completed_at IS NOT NULL
        AND ws.reps IS NOT NULL AND ws.reps > 0
      ORDER BY achieved_at ASC, ws.id ASC`,
   );
