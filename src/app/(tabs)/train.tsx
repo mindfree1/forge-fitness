@@ -96,6 +96,7 @@ export default function TrainScreen() {
   const [stalePromptedId, setStalePromptedId] = useState<number | null>(null);
   const [finishPromptOpen, setFinishPromptOpen] = useState(false);
   const [finishPromptDismissedId, setFinishPromptDismissedId] = useState<number | null>(null);
+  const [customDraft, setCustomDraft] = useState(false);
 
   const refresh = useCallback(async () => {
     const active = await getActiveWorkout();
@@ -111,6 +112,7 @@ export default function TrainScreen() {
 
     setActiveWorkout(active);
     setTemplate(recommended);
+    if (active || recommended) setCustomDraft(false);
     setNextTemplate(next);
     setLibrary(allExercises);
     setProgramTemplates(templates);
@@ -193,34 +195,33 @@ export default function TrainScreen() {
   };
 
   const startSession = async () => {
-    if (starting || !template) return;
+    if (starting || (!template && !customDraft)) return;
     setStarting(true);
     try {
-      const workout = await startWorkout(template.name, template.id);
+      const workout = await startWorkout(template?.name ?? 'Quick session', template?.id ?? null);
+      if (customDraft) {
+        for (const exercise of sessionExercises) {
+          await addExerciseToWorkout(workout.id, exercise.id);
+        }
+      }
       setActiveWorkout(workout);
       const plan = await getWorkoutExercisePlan(workout.id, workout.templateId);
       setSessionExercises(plan);
       setProgress(await getWorkoutExerciseProgress(workout.id));
+      setCustomDraft(false);
     } finally {
       setStarting(false);
     }
   };
 
-  const startQuickSession = async () => {
-    if (starting) return;
-    setStarting(true);
-    try {
-      const workout = await startWorkout('Quick session', null);
-      setActiveWorkout(workout);
-      setTemplate(null);
-      setNextTemplate(null);
-      setSessionExercises([]);
-      setProgress([]);
-      setSessionPickerOpen(false);
-      setPickerOpen(true);
-    } finally {
-      setStarting(false);
-    }
+  const beginQuickDraft = () => {
+    setTemplate(null);
+    setNextTemplate(null);
+    setSessionExercises([]);
+    setProgress([]);
+    setCustomDraft(true);
+    setSessionPickerOpen(false);
+    setPickerOpen(true);
   };
 
   const finishSession = async () => {
@@ -277,13 +278,19 @@ export default function TrainScreen() {
   };
 
   const reorderExercise = useCallback(async (from: number, to: number) => {
-    if (!activeWorkout || from === to) return;
+    if (from === to) return;
     const next = [...sessionExercises];
     const [moved] = next.splice(from, 1);
     next.splice(to, 0, moved);
     setSessionExercises(next);
-    await setWorkoutExerciseOrder(activeWorkout.id, next.map((exercise) => exercise.id));
+    if (activeWorkout) {
+      await setWorkoutExerciseOrder(activeWorkout.id, next.map((exercise) => exercise.id));
+    }
   }, [activeWorkout, sessionExercises]);
+
+  const removeDraftExercise = (exercise: WorkoutTemplateExercise) => {
+    setSessionExercises((current) => current.filter((item) => item.id !== exercise.id));
+  };
 
   const confirmRemoveExercise = (exercise: WorkoutTemplateExercise) => {
     if (!activeWorkout) return;
@@ -309,14 +316,30 @@ export default function TrainScreen() {
   };
 
   const addExercise = async (exercise: ExerciseLibraryItem) => {
-    if (!activeWorkout) return;
+    if (!activeWorkout) {
+      if (!customDraft) return;
+      const draftExercise: WorkoutTemplateExercise = {
+        ...exercise,
+        templateExerciseId: 0,
+        position: sessionExercises.length,
+        targetSets: 3,
+        minReps: 8,
+        maxReps: 12,
+        restSeconds: 90,
+      };
+      setSessionExercises((current) => [...current, draftExercise]);
+      setPickerOpen(false);
+      setPickerQuery('');
+      return;
+    }
     await addExerciseToWorkout(activeWorkout.id, exercise.id);
     setPickerOpen(false);
     setPickerQuery('');
     setSessionExercises(await getWorkoutExercisePlan(activeWorkout.id, activeWorkout.templateId));
   };
 
-  if (!template && !activeWorkout) {
+
+  if (!template && !activeWorkout && !customDraft) {
     return (
       <Screen>
         <View style={styles.header}>
@@ -373,7 +396,7 @@ export default function TrainScreen() {
             <View style={styles.heroTop}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.heroLabel}>TODAY'S TARGET</Text>
-                <Text style={styles.heroValue}>{template?.workingSets ?? 0} working sets</Text>
+                <Text style={styles.heroValue}>{template?.workingSets ?? sessionExercises.reduce((sum, exercise) => sum + exercise.targetSets, 0)} working sets</Text>
               </View>
               <View style={styles.roundIcon}><MaterialCommunityIcons name="dumbbell" size={24} color={colors.accent} /></View>
             </View>
@@ -381,18 +404,18 @@ export default function TrainScreen() {
             <Pressable onPress={() => setSessionPickerOpen(true)} style={styles.sessionChoice}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.heroLabel}>TODAY'S SESSION</Text>
-                <Text style={styles.sessionChoiceName}>{template?.name ?? 'Choose session'}</Text>
+                <Text style={styles.sessionChoiceName}>{customDraft ? 'Quick session / Custom today' : template?.name ?? 'Choose session'}</Text>
               </View>
               <Text style={styles.changeText}>CHANGE</Text>
             </Pressable>
-            <PrimaryButton label={starting ? 'Starting…' : 'Start session'} icon="play" onPress={startSession} />
+            <PrimaryButton label={starting ? 'Starting…' : customDraft && !sessionExercises.length ? 'Add an exercise first' : 'Start session'} icon="play" onPress={customDraft && !sessionExercises.length ? () => setPickerOpen(true) : startSession} />
           </>
         )}
       </Card>
 
       <View style={styles.sectionHead}>
         <SectionTitle>{activeWorkout ? 'Active workout' : 'Workout'}</SectionTitle>
-        {activeWorkout ? (
+        {activeWorkout || customDraft ? (
           <Pressable onPress={() => setPickerOpen(true)}><Text style={styles.editMeta}>+ ADD EXERCISE</Text></Pressable>
         ) : (
           <View style={{ flexDirection: 'row', gap: 16 }}>
@@ -417,11 +440,11 @@ export default function TrainScreen() {
           return (
             <View key={`${exercise.id}:${index}`} style={[styles.exercise, done && styles.exerciseDone]}>
               <Pressable
-                onPress={() => openExercise(exercise)}
-                onLongPress={activeWorkout ? () => confirmRemoveExercise(exercise) : undefined}
+                onPress={activeWorkout ? () => openExercise(exercise) : customDraft ? undefined : () => openExercise(exercise)}
+                onLongPress={activeWorkout ? () => confirmRemoveExercise(exercise) : customDraft ? () => removeDraftExercise(exercise) : undefined}
                 delayLongPress={500}
                 style={styles.exerciseOpen}
-                accessibilityHint={activeWorkout ? 'Long press to remove this exercise from the current session' : undefined}
+                accessibilityHint={activeWorkout || customDraft ? 'Long press to remove this exercise from the current session' : undefined}
               >
                 <View style={[styles.index, done && styles.indexDone]}>
                   {done ? <MaterialCommunityIcons name="check" size={17} color={colors.bg} /> : <Text style={styles.indexText}>{String(index + 1).padStart(2, '0')}</Text>}
@@ -444,7 +467,7 @@ export default function TrainScreen() {
                 </View>
                 <MaterialCommunityIcons name="chevron-right" size={23} color={done ? colors.accent : colors.faint} />
               </Pressable>
-              {activeWorkout ? (
+              {activeWorkout || customDraft ? (
                 <DragHandle index={index} count={sessionExercises.length} onDrop={reorderExercise} />
               ) : null}
             </View>
@@ -474,7 +497,7 @@ export default function TrainScreen() {
               {programTemplates.map((option) => (
                 <Pressable
                   key={option.id}
-                  onPress={() => { setTemplate(option); setNextTemplate(null); setSessionExercises(option.exercises); setSessionPickerOpen(false); }}
+                  onPress={() => { setTemplate(option); setNextTemplate(null); setSessionExercises(option.exercises); setCustomDraft(false); setSessionPickerOpen(false); }}
                   style={styles.pickerRow}
                 >
                   <View style={{ flex: 1 }}>
@@ -484,7 +507,7 @@ export default function TrainScreen() {
                   {template?.id === option.id ? <MaterialCommunityIcons name="check-circle" size={23} color={colors.accent} /> : <MaterialCommunityIcons name="chevron-right" size={22} color={colors.faint} />}
                 </Pressable>
               ))}
-              <Pressable onPress={startQuickSession} style={styles.quickSessionRow}>
+              <Pressable onPress={beginQuickDraft} style={styles.quickSessionRow}>
                 <View style={styles.quickSessionIcon}><MaterialCommunityIcons name="playlist-plus" size={21} color={colors.accent} /></View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.pickerTitle}>Quick session / Custom today</Text>
