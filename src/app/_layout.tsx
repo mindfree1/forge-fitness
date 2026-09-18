@@ -13,6 +13,7 @@ export default function RootLayout() {
         <Stack.Screen name="programs" options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="workout-template/[id]" options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="pb-history" options={{ animation: 'slide_from_right' }} />
+        <Stack.Screen name="session-history" options={{ animation: 'slide_from_right' }} />
       </Stack>
     </FitnessProvider>
   );

@@ -1,4 +1,4 @@
-import { database, saveWorkoutSet } from './db';
+import { database, rebuildPersonalBests, saveWorkoutSet } from './db';
 import type { PersonalBest, WorkoutSet, WorkoutTemplateExercise } from './types';
 
 export type WorkoutExerciseProgress = {
@@ -144,6 +144,7 @@ export async function deleteWorkoutSet(workoutId: number, exerciseSlug: string, 
     exerciseId,
     setNumber,
   );
+  await rebuildPersonalBests();
 }
 
 async function ensureWorkoutExerciseOrder(workoutId: number, templateId: number | null) {
@@ -263,6 +264,68 @@ export async function moveWorkoutExercise(workoutId: number, exerciseId: number,
       other.exercise_id,
     );
   });
+}
+
+
+export async function setWorkoutExerciseOrder(workoutId: number, exerciseIds: number[]) {
+  await ensureGymFlowSchema();
+  const db = await database();
+  await db.withTransactionAsync(async () => {
+    for (let index = 0; index < exerciseIds.length; index += 1) {
+      await db.runAsync(
+        'UPDATE workout_exercise_order SET position = ? WHERE workout_id = ? AND exercise_id = ?',
+        index,
+        workoutId,
+        exerciseIds[index],
+      );
+    }
+  });
+}
+
+export async function removeExerciseFromWorkout(workoutId: number, exerciseId: number) {
+  await ensureGymFlowSchema();
+  const db = await database();
+  await db.withTransactionAsync(async () => {
+    await db.runAsync(
+      'DELETE FROM workout_exercise_order WHERE workout_id = ? AND exercise_id = ?',
+      workoutId,
+      exerciseId,
+    );
+    await db.runAsync(
+      'DELETE FROM workout_sets WHERE workout_id = ? AND exercise_id = ?',
+      workoutId,
+      exerciseId,
+    );
+    await db.runAsync(
+      'DELETE FROM cardio_entries WHERE workout_id = ? AND exercise_id = ?',
+      workoutId,
+      exerciseId,
+    );
+  });
+  await rebuildPersonalBests();
+}
+
+export async function getWorkoutActivityBounds(workoutId: number) {
+  await ensureGymFlowSchema();
+  const db = await database();
+  const row = await db.getFirstAsync<{ first_activity: string | null; last_activity: string | null }>(
+    `SELECT MIN(activity_at) AS first_activity, MAX(activity_at) AS last_activity
+     FROM (
+       SELECT set_completed_at AS activity_at
+       FROM workout_sets
+       WHERE workout_id = ? AND set_completed_at IS NOT NULL
+       UNION ALL
+       SELECT completed_at AS activity_at
+       FROM cardio_entries
+       WHERE workout_id = ? AND completed_at IS NOT NULL
+     )`,
+    workoutId,
+    workoutId,
+  );
+  return {
+    firstActivityAt: row?.first_activity ?? null,
+    lastActivityAt: row?.last_activity ?? null,
+  };
 }
 
 export async function getWorkoutExerciseProgress(workoutId: number): Promise<WorkoutExerciseProgress[]> {

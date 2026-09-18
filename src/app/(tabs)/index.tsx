@@ -133,7 +133,7 @@ export default function TodayScreen() {
             <Text style={styles.streakNumber}>{sessionsThisWeek}</Text>
             <Text style={styles.streakLabel}>sessions completed</Text>
           </View>
-          <View style={styles.fireBadge}><MaterialCommunityIcons name="fire" size={27} color={colors.bg} /></View>
+          <View style={styles.fireBadge}><MaterialCommunityIcons name="calendar-check-outline" size={25} color={colors.bg} /></View>
         </View>
         <WeekStrip activity={weekActivity} />
       </Card>
