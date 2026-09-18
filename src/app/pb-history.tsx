@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -38,6 +38,19 @@ export default function PbHistoryScreen() {
     getPersonalBestHistory(100).then(setItems).catch(() => setItems([]));
   }, []));
 
+  const groups = useMemo(() => {
+    const grouped = new Map<string, { key: string; exerciseName: string; date: string; items: PersonalBestHistoryItem[] }>();
+    for (const item of items) {
+      const date = new Date(item.achievedAt);
+      const dayKey = `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
+      const key = `${item.exerciseSlug}:${dayKey}`;
+      const existing = grouped.get(key);
+      if (existing) existing.items.push(item);
+      else grouped.set(key, { key, exerciseName: item.exerciseName, date: item.achievedAt, items: [item] });
+    }
+    return Array.from(grouped.values());
+  }, [items]);
+
   return (
     <Screen>
       <View style={styles.nav}>
@@ -50,21 +63,28 @@ export default function PbHistoryScreen() {
       <Title style={{ marginTop: 6 }}>Personal bests.</Title>
       <Body style={{ marginTop: 8 }}>Every new load, rep, estimated 1RM and set-volume record Forge has captured.</Body>
 
-      <View style={styles.sectionHead}><SectionTitle>Timeline</SectionTitle><Text style={styles.meta}>{items.length} records</Text></View>
+      <View style={styles.sectionHead}><SectionTitle>Timeline</SectionTitle><Text style={styles.meta}>{groups.length} achievements</Text></View>
       <View style={styles.list}>
         {items.length === 0 && (
           <Card><Text style={styles.emptyTitle}>No PBs yet</Text><Body style={{ marginTop: 5 }}>Complete working sets and Forge will build this timeline automatically.</Body></Card>
         )}
-        {items.map((item) => (
-          <Card key={item.id} style={styles.row}>
+        {groups.map((group) => (
+          <Card key={group.key} style={styles.row}>
             <View style={styles.icon}><MaterialCommunityIcons name="trophy-outline" size={20} color={colors.accent} /></View>
             <View style={{ flex: 1 }}>
               <View style={styles.rowTop}>
-                <Text style={styles.exercise}>{item.exerciseName}</Text>
-                <Text style={styles.metric}>{metricName(item.metric)}</Text>
+                <Text style={styles.exercise}>{group.exerciseName}</Text>
+                <Text style={styles.metric}>{group.items.length} PB{group.items.length === 1 ? '' : 'S'}</Text>
               </View>
-              <Text style={styles.value}>{metricLabel(item)}</Text>
-              <Text style={styles.date}>{new Date(item.achievedAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}</Text>
+              <View style={styles.metricList}>
+                {group.items.map((item) => (
+                  <View key={item.id} style={styles.metricPill}>
+                    <Text style={styles.metricPillName}>{metricName(item.metric)}</Text>
+                    <Text style={styles.metricPillValue}>{metricLabel(item)}</Text>
+                  </View>
+                ))}
+              </View>
+              <Text style={styles.date}>{new Date(group.date).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}</Text>
             </View>
           </Card>
         ))}
@@ -87,6 +107,10 @@ const styles = StyleSheet.create({
   exercise: { flex: 1, color: colors.text, fontSize: 14, fontWeight: '900' },
   metric: { color: colors.accent, fontSize: 8, fontWeight: '900', letterSpacing: 0.8 },
   value: { color: colors.muted, fontSize: 12, fontWeight: '800', marginTop: 4 },
+  metricList: { gap: 6, marginTop: 8 },
+  metricPill: { borderRadius: radii.md, backgroundColor: colors.surface3, paddingHorizontal: 10, paddingVertical: 8 },
+  metricPillName: { color: colors.accent, fontSize: 8, fontWeight: '900', letterSpacing: 0.8 },
+  metricPillValue: { color: colors.muted, fontSize: 11, fontWeight: '800', marginTop: 2 },
   date: { color: colors.faint, fontSize: 9, fontWeight: '700', marginTop: 6 },
   emptyTitle: { color: colors.text, fontSize: 16, fontWeight: '900' },
 });
